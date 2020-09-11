@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "npx webpack-dev-server --config client/webpack.common.js --port 9000",
+    "compile": "webpack --config ./client/webpack.common.js",
+    "start": "npx webpack-dev-server --config ./client/webpack.common.js --port 9000"
   },
   "author": "Aaron Egbert",
   "license": "ISC",

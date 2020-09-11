@@ -14,8 +14,17 @@ module.exports = {
     extensions: [ '.ts', '.tsx', '.js' ]
   },
   output: {
-    filename: 'app.js',
-    path: path.resolve(__dirname, 'dist')
+    path: path.resolve(__dirname, '../build/client'),
+    publicPath: '/',
+    filename: 'bundle.js', //Creates in-memory bundle for "index.html" to pickup
+},
+  // For dev webpack stuff
+  devServer: {
+    host: 'localhost',
+    historyApiFallback: true,
+    contentBase: path.join(__dirname),
+    open: false, // Here
+    openPage: 'login', // And here
   },
-  mode: 'development'
+  devtool: 'cheap-module-source-map',
 };
