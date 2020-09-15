@@ -21,6 +21,10 @@ let keyUP;
 let keyDOWN;
 let keyLEFT;
 let keyRIGHT;
+let keyQ;
+let keyW;
+let keyA;
+let keyS;
 
 var circleX = 200;
 var circleY = 290;
@@ -142,6 +146,11 @@ keyDOWN = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN);
 keyLEFT = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT);
 keyRIGHT = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT);
 
+keyQ = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Q);
+keyW = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
+keyA = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
+keyS = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S);
+
 // graphics.save()
 // graphics.generateTexture("test");
 // graphics.clear();
@@ -149,20 +158,26 @@ keyRIGHT = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT);
 // backgroundGameObject = new Phaser.GameObjects.GameObject(sceneManager.getScenes()[0], "background")
 }
 
-// var currentCollisionDistance = 100000000000 // TODO: Change to max numrical value?
-// var bestCollisionSoFar: Point = null;
+var flashlightAngle = 90 * Math.PI/180;
+var flashlightDirection = 90 * Math.PI/180;
+var isFlashlight = false;
 
-
-// console.log(`(${pointX},${pointY})`)
+function boundAngle(angle: number) {
+  angle %= (2*Math.PI)
+  if (angle > Math.PI) {
+    angle -= 2*Math.PI
+  }
+  if (angle < -Math.PI) {
+    angle += 2*Math.PI
+  }
+  return angle;
+}
 
 function update() {
 
   // Significantly enhances performance by removing previously rendered objects
   graphics.clear()
 
-  // var sprite = t his.add.sprite(400, 300, "test")
-  // sprite.setDepth(-1);
-  // let graphics = this.add.graphics({ x: 0, y: 0, lineStyle: { width: 4, color: 0xaa00aa } });
   if (keyUP.isDown)
     {
       circleY -= 3
@@ -180,6 +195,37 @@ function update() {
       circleX += 3
     }
 
+    if (keyQ.isDown)
+    {
+      flashlightAngle += 1 * Math.PI/180
+    }
+    if (keyW.isDown)
+    {
+      flashlightAngle -= 1 * Math.PI/180
+    }
+
+    if (keyA.isDown)
+    {
+      flashlightDirection += 1 * Math.PI/180
+    }
+    if (keyS.isDown)
+    {
+      flashlightDirection -= 1 * Math.PI/180
+    }
+
+    // Contrain flashlight bounds to unit circle angles
+    if (flashlightAngle > 2*Math.PI) {
+      flashlightAngle = 2*Math.PI
+    }
+    if (flashlightAngle < 0) {
+      flashlightAngle = 0
+    }
+
+    let lowerRayBounds = boundAngle(flashlightDirection - flashlightAngle/2);
+    let upperRayBounds = boundAngle(flashlightDirection + flashlightAngle/2);
+
+    console.log(`RAY BOUNDS: ${lowerRayBounds}, ${upperRayBounds}`)
+
   // TODO: Not sure if this can be optimized as an image
   for (let index = 0; index < numPolygons; ++index) {
     const currentPolygon = allPolygons[index]
@@ -192,48 +238,53 @@ circle.setTo(circleX, circleY, 5);
 
 let rayAngleQueue = priorityQueue<{angle, x, y}>()
 
-for (let outerIndex = 0; outerIndex < numPoints; ++outerIndex) {  
-  const currentPoint: Phaser.Geom.Point = allPoints[outerIndex];
-  const diffX: number = allPoints[outerIndex].x - circleX;
-  const diffY: number = allPoints[outerIndex].y - circleY;
-  const rayAngle: number = Math.atan2(diffY, diffX); // Used for priority queue when added later
+// If it is a flashlight, then add the boundary lines first
+if (isFlashlight) {
+  let lowerX = circleX + Math.cos(lowerRayBounds) * 50
+  let lowerY = circleY + Math.sin(lowerRayBounds) * 50
+  let upperX = circleX + Math.cos(upperRayBounds) * 50
+  let upperY = circleY + Math.sin(upperRayBounds) * 50
 
-  let beforeAngle = rayAngle - 0.00001;
-  // let beforeSlope = Math.tan(beforeAngle);
-  let afterAngle = rayAngle + 0.00001;
-  // let afterSlope = Math.tan(afterAngle);
-
-  rayAngleQueue.insert({angle: beforeAngle, x: currentPoint.x, y: currentPoint.y}, beforeAngle);
-  rayAngleQueue.insert({angle: rayAngle, x: currentPoint.x, y: currentPoint.y}, rayAngle);
-  rayAngleQueue.insert({angle: afterAngle, x: currentPoint.x, y: currentPoint.y}, afterAngle);
+  rayAngleQueue.insert({angle: lowerRayBounds, x: lowerX, y: lowerY}, lowerRayBounds);
+  rayAngleQueue.insert({angle: upperRayBounds, x: upperX, y: upperY}, upperRayBounds);
 }
 
-let rayAngleLength = rayAngleQueue.size()
-// Ray tracing to each point
-// console.log("START 3")
+// Generate all the rays needed for the game
+for (let outerIndex = 0; outerIndex < numPoints; ++outerIndex) {  
+  const currentPoint: Phaser.Geom.Point = allPoints[outerIndex];
+  const diffX: number = currentPoint.x - circleX;
+  const diffY: number = currentPoint.y - circleY;
+  const rayAngle: number = Math.atan2(diffY, diffX); // Used for priority queue when added later
+
+  let beforeAngle = boundAngle(rayAngle - 0.00001);
+  let afterAngle = boundAngle(rayAngle + 0.00001);
+
+  const normalBounds = (lowerRayBounds < rayAngle && upperRayBounds > rayAngle)
+  // Happens when lower/upper bounds surpass the +-Math.PI mark
+  const reversedBounds = (lowerRayBounds > upperRayBounds) && ((-Math.PI < rayAngle && upperRayBounds > rayAngle) || (lowerRayBounds < rayAngle && Math.PI > rayAngle))
+  if (!isFlashlight || reversedBounds || normalBounds) {
+    rayAngleQueue.insert({angle: beforeAngle, x: currentPoint.x, y: currentPoint.y}, beforeAngle);
+    rayAngleQueue.insert({angle: rayAngle, x: currentPoint.x, y: currentPoint.y}, rayAngle);
+    rayAngleQueue.insert({angle: afterAngle, x: currentPoint.x, y: currentPoint.y}, afterAngle);
+  }
+}
 // This will store the point priority of the light polygon we will create
 let queue = priorityQueue<Point>()
-// console.log("RAY ANGLE LENGTH: " + rayAngleLength)
+let rayAngleLength = rayAngleQueue.size()
+
+// Ray tracing to each point
 for (let outerIndex = 0; outerIndex < rayAngleLength; ++outerIndex) {
   const {angle, x, y} = rayAngleQueue.pop();
   const rayAngle = angle
-  // const {x, y} = data.x
 
-  // console.log("INDEX " + index + " of " + numPoints)
-  // const currentPoint = allPoints[outerIndex];
-  // const diffX = currentPoint.x - circleX
-  // const diffY = currentPoint.y - circleY
-  // const rayAngle = Math.atan2(diffY, diffX) // Used for priority queue when added later
   const raySlope = Math.tan(rayAngle);
-  // const raySlope = diffY/diffX;
   const rayYIntercept: number = -(raySlope)*circleX + circleY
 
   let currentCollisionDistance = 100000000000 // TODO: Change to max numrical value?
   let bestCollisionSoFar = {x:-1, y:-1}
 
-
   // console.log(`LINE FOUND -> (${circleX},${circleY}, ${currentPoint.x}, ${currentPoint.y}) => (${rayAngle}, ${raySlope} ${rayYIntercept})`)
-  // const line: Phaser.Geom.Line = new Phaser.Geom.Line(); //Used for debugging
+  // const line: Phaser.Geom.Line = new Phaser.Geom.Line(circleX, circleY, x, y); //Used for debugging
   // graphics.strokeLineShape(line);
 
   // console.log(`START 4 WITH (${x}, ${y}) with ray angle ${rayAngle * 180/Math.PI} and slope ${raySlope}`)
@@ -264,37 +315,29 @@ for (let outerIndex = 0; outerIndex < rayAngleLength; ++outerIndex) {
           // Also check if angle to circle is the same
           const distanceToLightOrigin = Math.sqrt(Math.pow(collisionX - circleX, 2) + Math.pow(collisionY - circleY, 2))
           const angleToLight = Math.atan2(collisionY - circleY, collisionX - circleX)
-          // if (x == 200 && y == 278) {
-          // console.log(`WITHIN BOUNDS: (${distanceToLightOrigin}, ${angleToLight * 180/Math.PI})`)
-          // }
           
-          // console.log(`In Bounds! -> ${distanceToLightOrigin} && ${angleToLight}`)
           if (distanceToLightOrigin < currentCollisionDistance && //Check it is closer
-            ((angleToLight < rayAngle + 2*Math.PI + 0.001 && angleToLight > rayAngle + 2*Math.PI - 0.001) 
-            || (angleToLight < rayAngle + 0.001 && angleToLight > rayAngle - 0.001)
-            || (angleToLight < rayAngle - 2*Math.PI + 0.001 && angleToLight > rayAngle - 2*Math.PI - 0.001))) {//Check it is in the direction of the ray
-            // TODO: What about ray angles that jump from 0 to 360 or visa versa?
-            bestCollisionSoFar = {x:collisionX, y:collisionY}
-            currentCollisionDistance = distanceToLightOrigin
-            // if (x == 200 && y == 278) {
-            // console.log(`BEST SO FAR: ${currentCollisionDistance}`)
-            // }
+            ((angleToLight < rayAngle + 0.001 && angleToLight > rayAngle - 0.001))) { //Check it is in the direction of the ray (including if ray angles jump from 0 to 360 or visa versa)
+              bestCollisionSoFar = {x:collisionX, y:collisionY}
+              currentCollisionDistance = distanceToLightOrigin
           }
     }
 
-    // Circumstance for when collisions are equal to line edge
+    // TODO: Circumstance for when collisions are equal to line edge
   }
-  // console.log(`FINISH 4 WITH (${bestCollisionSoFar.x}, ${bestCollisionSoFar.y})`)
 
   // Add light collision point to priority queue (Dont need priority queue here)
   queue.insert(bestCollisionSoFar, rayAngle);
 }
-// console.log("FINISH 3")
 
-let finalPointOrder: number[] = []
+// Add circle to light polygon, if it is a flashlight
+if (isFlashlight) {
+  let joinAngle = boundAngle(flashlightDirection + Math.PI);
+  queue.insert({x:circleX, y:circleY}, joinAngle);
+}
+
 // Generate the polygon
-// console.log("START 5")
-// console.log(`LENGTH OF POINTS: ${queue.size()}`)
+let finalPointOrder: number[] = []
 while (queue.peek() != null) {
   const nextPoint = queue.pop()
   const pointX = nextPoint.x
@@ -305,7 +348,6 @@ while (queue.peek() != null) {
   // graphics.fillStyle(0x000000)
   // graphics.fillCircleShape(circle2);
 }
-// console.log("FINISH 5")
 
 light_polygon.setTo(finalPointOrder);
 graphics.fillStyle(0xffff00)
