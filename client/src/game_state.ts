@@ -165,65 +165,75 @@ export class GameState extends Phaser.Scene {
       return
     }
 
-    console.log(`(x,y, nextPointX, nextPointY) => (${this.circleX},${this.circleY},${nextPointX},${nextPointY})`)
+    
 
-    // // Collisions with edges
-    // // const diffX: number = nextPointX - this.circleX;
-    // // const diffY: number = nextPointY - this.circleY;
-    // // const movementAngle: number = Math.atan2(diffY, diffX); // Used for priority queue when added later
-  
-    // // const movementSlope = Math.tan(movementAngle);
-    // // const rayYIntercept: number = -(movementSlope)*this.circleX + this.circleY
-    // let currentCollisionDistance = 9; // TODO: Change to max numrical value?
-    // let bestCollisionSoFar = {x:nextPointX, y:nextPointY}
-  
-    // // console.log(`START 4 WITH (${x}, ${y}) with ray angle ${rayAngle * 180/Math.PI} and slope ${raySlope}`)
-    // for (let innerIndex = 0; innerIndex < this.numEdges; ++innerIndex) {
-    //   // console.log("EDGE " + edgeIndex + " of " + numEdges)
-    //   const currentEdge: Line = this.allEdges[innerIndex];
-    //   let collisionX: number;
-    //   let collisionY: number;
-    //   // Handles verticle polygon lines
-    //   // NOTE: Vertical `raySlope` is handled as a very large number, but not infinity
-    //   if (currentEdge.slope == Infinity || currentEdge.slope == -Infinity) {
-    //     continue
-    //   } else {
-    //     collisionX = (nextPointX + currentEdge.slope * nextPointY - currentEdge.slope * currentEdge.b) / (1 + currentEdge.slope**2)
-    //     collisionY = (currentEdge.slope *nextPointX + (currentEdge.slope**2) * nextPointY + currentEdge.b) / (1 + currentEdge.slope**2)
-    //   }
+    const diffX: number = nextPointX - this.circleX;
+    const diffY: number = nextPointY - this.circleY;
+    const distanceAttemptingToTravel: number = Math.sqrt(Math.pow(diffX,2) + Math.pow(diffY,2))
+    const rayAngle: number = Math.atan2(diffY, diffX); // Used for priority queue when added later
+    const raySlope = Math.tan(rayAngle);
+    const rayYIntercept: number = -(raySlope)*this.circleX + this.circleY
 
-    //   console.log(`(collisionX, collisionY) => (${collisionX}, ${collisionY})`)
-
-    //   // console.log("CURRENT RAY: " + currentEdge.slope)
-    //   // const collisionX: number = (rayYIntercept - currentEdge.b) / (currentEdge.slope - raySlope);
-    //   // const collisionY: number = currentEdge.slope*collisionX + currentEdge.b;
+    let collisionHappened = false;
+    let currentCollisionDistance = distanceAttemptingToTravel; // TODO: Change to max numrical value?
+    //console.log(`(x,y, nextPointX, nextPointY, travelDistance) => (${this.circleX},${this.circleY},${nextPointX},${nextPointY},${distanceAttemptingToTravel})`)
+    //console.log(`(diffx,diffy,travelDistance) => (${diffX},${diffY},${distanceAttemptingToTravel})`)
+    
+    let bestCollisionSoFarLineAngle: number = 0;
   
-    //   // console.log(`COLLISION FOUND -> (${collisionX},${collisionY}) for bounds (${currentEdge.x1}, ${currentEdge.y1}) and (${currentEdge.x2}, ${currentEdge.y2}) => (${rayAngle * 180/Math.PI}, ${rayYIntercept})`)
-    //   // console.log(`COLLISION FOUND -> (${collisionX},${collisionY}) for bounds (${currentEdge.minX}, ${currentEdge.maxX}) and (${currentEdge.minY}, ${currentEdge.maxY})`)
+    // Checks for movement line collision with all polygon lines
+    for (let innerIndex = 0; innerIndex < this.numEdges; ++innerIndex) {
+      const currentEdge: Line = this.allEdges[innerIndex];
+      const edgeAngle: number = Math.atan2(currentEdge.y1 - currentEdge.y2, currentEdge.x1 - currentEdge.x2)
+      let collisionX: number;
+      let collisionY: number;
+
+      // Handles verticle polygon lines
+      // NOTE: Vertical `raySlope` is handled as a very large number, but not infinity
+      if (currentEdge.slope == Infinity || currentEdge.slope == -Infinity) {
+        collisionX = currentEdge.minX;
+        collisionY = raySlope*collisionX + rayYIntercept;
+      } else {
+        collisionX = (rayYIntercept - currentEdge.b) / (currentEdge.slope - raySlope);
+        collisionY = currentEdge.slope*collisionX + currentEdge.b;
+      }
       
-    //   // Need a good enough buffer for floating point errors           
-    //   if (collisionX <= currentEdge.maxX + 0.00001 && collisionX >= currentEdge.minX - 0.00001 && 
-    //       collisionY <= currentEdge.maxY + 0.00001 && collisionY >= currentEdge.minY - 0.00001) {
-    //         // Also check if angle to circle is the same
-    //         const distanceToLightOrigin = Math.sqrt(Math.pow(collisionX - this.circleX, 2) + Math.pow(collisionY - this.circleY, 2))
-    //         // const angleToLight = Math.atan2(collisionY - this.circleY, collisionX - this.circleX)
+      // Need a good enough buffer for floating point errors           
+      if (collisionX <= currentEdge.maxX + 0.00001 && collisionX >= currentEdge.minX - 0.00001 && 
+          collisionY <= currentEdge.maxY + 0.00001 && collisionY >= currentEdge.minY - 0.00001) {
+            // Also check if angle to circle is the same
+            const distanceToLightOrigin = Math.sqrt(Math.pow(collisionX - this.circleX, 2) + Math.pow(collisionY - this.circleY, 2))
+            const angleToLight = this.boundAngle(Math.atan2(collisionY - this.circleY, collisionX - this.circleX))
+
+            // if (currentEdge.x1 == 650 && currentEdge.y1 == 80) {
+            // console.log(`(angle) => (${distanceToLightOrigin},${angleToLight},${rayAngle},${rayAngle-2*Math.PI})`)
+            // }
             
-    //         if (distanceToLightOrigin < currentCollisionDistance) {
-    //           //  && //Check it is closer
-    //           // ((angleToLight < movementAngle + 0.001 && angleToLight > movementAngle - 0.001))) { //Check it is in the direction of the ray (including if ray angles jump from 0 to 360 or visa versa)
-    //             bestCollisionSoFar = {x:collisionX, y:collisionY}
-    //             currentCollisionDistance = distanceToLightOrigin
-    //         }
-    //   }
+            if (distanceToLightOrigin < currentCollisionDistance && //Check it is closer
+              ((angleToLight < rayAngle + 0.01 && angleToLight > rayAngle - 0.01) || // Three angle checks are required because of checking between -180 and 180 degrees sometimes happens on left movements
+              (angleToLight+2*Math.PI < rayAngle + 0.01 && angleToLight+2*Math.PI > rayAngle - 0.01) ||
+              (angleToLight-2*Math.PI < rayAngle + 0.01 && angleToLight-2*Math.PI > rayAngle - 0.01))) { //Check it is in the direction of the ray (including if ray angles jump from 0 to 360 or visa versa)
+                bestCollisionSoFarLineAngle = edgeAngle
+                currentCollisionDistance = distanceToLightOrigin
+                collisionHappened = true
+            }
+      }
   
-    //   // TODO: Circumstance for when collisions are equal to line edge
-    // }
+      // TODO: Circumstance for when collisions are equal to line edge
+    }
+    
+    if (collisionHappened) {
+      // Smooth collisions, by only allowing movements in direction of the ray
+      const rawDistance = distanceAttemptingToTravel * Math.cos(rayAngle - bestCollisionSoFarLineAngle)
+      const xDiff = Math.cos(bestCollisionSoFarLineAngle) * rawDistance
+      const yDiff = Math.sin(bestCollisionSoFarLineAngle) * rawDistance
 
-    // this.circleX = bestCollisionSoFar.x
-    // this.circleY = bestCollisionSoFar.y
-
-    this.circleX = nextPointX
-    this.circleY = nextPointY
+      this.circleX += xDiff
+      this.circleY += yDiff
+    } else {
+      this.circleX = nextPointX
+      this.circleY = nextPointY
+    }
 
     // Constrain circle position to inside room boundaries (small error boundary prevents parallelization with wall)
     if (this.circleX > GameState.gameWidth - 0.0001) {
