@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser'
 import { Line } from './line'
 import { priorityQueue } from './priority_queue'
+import { generatePolygon } from './polygon_generator'
 
 export class GameState extends Phaser.Scene {
   static gameWidth: number;
@@ -74,13 +75,20 @@ export class GameState extends Phaser.Scene {
       800, 600,
       0, 600
   ]);
+
+  // TODO: Light bug when polygon has point outside of room (eg. (-63, 40))
+  // ^^ - To solve this, we need to generate points from collisions between polygons
+
+  // TODO: Player is allowed to slip between polygons when they overlap
+  let polygon3 = generatePolygon(3, 200, 200, 300);
   
   this.graphics = this.add.graphics({ x: 0, y: 0, lineStyle: { width: 4, color: 0xaa00aa } });
   
   // Global object setting
-  this.allPoints = polygon.points.concat(polygon2.points);
+  this.allPoints = polygon.points.concat(polygon2.points).concat(polygon3.points);
   this.allPolygons = [{polygon: polygon2, color: 0xf0f0f0},
-                {polygon: polygon, color: 0x00aa00}]
+                {polygon: polygon, color: 0x00aa00},
+                {polygon: polygon3, color: 0xff0000}] // Drawn in the order of this list
   this.allEdges = []
   
   // Set respective lengths
