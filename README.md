@@ -33,6 +33,6 @@ Currently, the technical stack will be:
 
 ## Docker commands
 
-`docker build -t ashirsc/io-example-game .`
+`docker build -t ashirsc/light-game .`
 
-`docker run -p 3000:3000 -d ashirsc/io-example-game`
+`docker run -p 3000:3000 -d ashirsc/light-game`

@@ -1,10 +1,9 @@
-const express = require('express');
+import express  from "express";
 // const webpack = require('webpack');
 // const webpackDevMiddleware = require('webpack-dev-middleware');
 const socketio = require('socket.io');
 
 const Constants = require('../shared/constants');
-import { constants } from 'crypto';
 // const webpackConfig = require('../../webpack.dev.js');
 
 import { Socket } from 'socket.io';
@@ -23,6 +22,10 @@ const app = express();
 //   // Static serve the dist/ folder in production
 //   app.use(express.static('dist'));
 // }
+
+app.all("/ping", (req,res) => {
+  res.sendStatus(200)
+})
 
 // Listen on port
 const port = process.env.PORT || 3000;

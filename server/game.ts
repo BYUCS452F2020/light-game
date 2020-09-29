@@ -1,23 +1,22 @@
-const Constants = require('../shared/constants');
-// const Player = require('./player');
-// const applyCollisions = require('./collisions');
-
-
 import { Socket } from 'socket.io';
 import { GameMap } from './map';
 
+const Constants = require('../shared/constants.js');
+
 export default class Game {
 
-  sockets: any
+  sockets: Map<string, Socket>
   players: any
   bullets: any
+  map: GameMap
   lastUpdateTime
   shouldSendUpdate
 
   constructor() {
-    this.sockets = {};
+    this.sockets = new Map()
     this.players = {};
     this.bullets = [];
+    this.map = new GameMap(2)
     this.lastUpdateTime = Date.now();
     this.shouldSendUpdate = false;
     setInterval(this.update.bind(this), 1000 / 60);
@@ -31,14 +30,15 @@ export default class Game {
   }
 
   start(socket: Socket, params: any) {
-    const map = new GameMap(2)
-    console.log(map)
-    socket.emit(Constants.MSG_TYPES.JOIN_GAME + '_response', map)
+    const jsonMap = JSON.stringify(this.map)
+    this.sockets.forEach(socket => {
+      socket.emit(Constants.MSG_TYPES.START_GAME, jsonMap)
+    })
 
   }
 
   addPlayer(socket: Socket, username: string) {
-    this.sockets[socket.id] = socket;
+    this.sockets.set(socket.id, socket)
 
     // Generate a position to start this player at.
     const x = Constants.MAP_SIZE * (0.25 + Math.random() * 0.5);
@@ -47,7 +47,7 @@ export default class Game {
   }
 
   removePlayer(socket: Socket) {
-    delete this.sockets[socket.id];
+    this.sockets.delete(socket.id)
     delete this.players[socket.id];
   }
 
@@ -67,20 +67,20 @@ export default class Game {
 
 
     // Update each player
-    Object.keys(this.sockets).forEach(playerID => {
-      const player = this.players[playerID];
+    this.sockets.forEach(socket => {
+      const player = this.players[socket.id];
       const newBullet = player.update(dt);
       if (newBullet) {
         this.bullets.push(newBullet);
       }
     });
 
-    
+
 
     // Check if any players are dead
-    Object.keys(this.sockets).forEach(playerID => {
-      const socket = this.sockets[playerID];
-      const player = this.players[playerID];
+    this.sockets.forEach(socket => {
+
+      const player = this.players[socket.id];
       if (player.hp <= 0) {
         socket.emit(Constants.MSG_TYPES.GAME_OVER);
         this.removePlayer(socket);
