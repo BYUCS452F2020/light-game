@@ -66,56 +66,104 @@ export class GameState extends Phaser.Scene {
       200, 278,
       340, 430,
       650, 80
-  ]);
-  
-  let polygon2 = new Phaser.Geom.Polygon()
+    ]);
+    
+    let polygon2 = new Phaser.Geom.Polygon()
     polygon2.setTo([
       0, 0,
       800, 0,
       800, 600,
       0, 600
-  ]);
+    ]);
 
-  // TODO: Light bug when polygon has point outside of room (eg. (-63, 40))
-  // ^^ - To solve this, we need to generate points from collisions between polygons
-
-  // TODO: Player is allowed to slip between polygons when they overlap
-  let polygon3 = generatePolygon(3, 200, 200, 300);
-  
-  this.graphics = this.add.graphics({ x: 0, y: 0, lineStyle: { width: 4, color: 0xaa00aa } });
-  
-  // Global object setting
-  this.allPoints = polygon.points.concat(polygon2.points).concat(polygon3.points);
-  this.allPolygons = [{polygon: polygon2, color: 0xf0f0f0},
-                {polygon: polygon, color: 0x00aa00},
-                {polygon: polygon3, color: 0xff0000}] // Drawn in the order of this list
-  this.allEdges = []
-  
-  // Set respective lengths
-  this.numPoints = this.allPoints.length;
-  this.numPolygons = this.allPolygons.length
-  
-  // Populates the edges object with all the polygons
-  for (let polygonIndex = 0; polygonIndex < this.numPolygons; ++polygonIndex) {
-    const currentPolygon = this.allPolygons[polygonIndex].polygon;
-    let previousPoint = currentPolygon.points[0];
-    let currentPoint;
+    // TODO: Player is allowed to slip between polygons when they overlap
+    // let polygon3 = generatePolygon(3, 200, 200, 300);
+    let polygon3 = new Phaser.Geom.Polygon()
+    polygon3.setTo([
+      200, 200,
+      300, 278,
+      340, 430,
+    ]);
     
-    for (let index = 1; index <= currentPolygon.points.length; ++index) {
-      if (index == currentPolygon.points.length) {
-        currentPoint = currentPolygon.points[0];
-        this.allEdges.push(new Line(currentPoint.x, currentPoint.y, previousPoint.x, previousPoint.y));
-        break;
-      } else {
-        currentPoint = currentPolygon.points[index];
-        this.allEdges.push(new Line(currentPoint.x, currentPoint.y, previousPoint.x, previousPoint.y));
-        previousPoint = currentPoint;
+    this.graphics = this.add.graphics({ x: 0, y: 0, lineStyle: { width: 4, color: 0xaa00aa } });
+    
+    // Global object setting
+    // Drawn in the order of this list
+    this.allPolygons = [{polygon: polygon2, color: 0xf0f0f0},
+                  {polygon: polygon, color: 0x00aa00},
+                  {polygon: polygon3, color: 0xff0000}] 
+    this.numPolygons = this.allPolygons.length
+
+    this.allEdges = []
+    
+    // Populates the edges object with all the polygons
+    for (let polygonIndex = 0; polygonIndex < this.numPolygons; ++polygonIndex) {
+      const currentPolygon = this.allPolygons[polygonIndex].polygon;
+      let previousPoint = currentPolygon.points[0];
+      let currentPoint;
+      
+      for (let index = 1; index <= currentPolygon.points.length; ++index) {
+        if (index == currentPolygon.points.length) {
+          currentPoint = currentPolygon.points[0];
+          this.allEdges.push(new Line(currentPoint.x, currentPoint.y, previousPoint.x, previousPoint.y));
+          break;
+        } else {
+          currentPoint = currentPolygon.points[index];
+          this.allEdges.push(new Line(currentPoint.x, currentPoint.y, previousPoint.x, previousPoint.y));
+          previousPoint = currentPoint;
+        }
       }
     }
-  }
-  
-  // Update number of edges
-  this.numEdges = this.allEdges.length;
+    
+    // Update number of edges
+    this.numEdges = this.allEdges.length;
+
+    // Ordering doesn't matter here, though we add points that are later generated from collisions between polygons
+    this.allPoints = polygon.points.concat(polygon2.points).concat(polygon3.points); 
+    for (let edgeIndex = 0; edgeIndex < this.numEdges; ++edgeIndex) {
+
+      const outerEdge = this.allEdges[edgeIndex];
+      outerEdge.x1
+
+      const diffX: number = outerEdge.x1 - outerEdge.x2;
+      const diffY: number = outerEdge.y1 - outerEdge.y2;
+      const rayAngle: number = Math.atan2(diffY, diffX); // Used for priority queue when added later
+      const raySlope = Math.tan(rayAngle);
+      const rayYIntercept: number = -(raySlope)*outerEdge.x2 + outerEdge.y2
+    
+      // Checks for movement line collision with all polygon lines
+      for (let innerIndex = edgeIndex+1; innerIndex < this.numEdges; ++innerIndex) {
+        const currentEdge: Line = this.allEdges[innerIndex];
+        let collisionX: number;
+        let collisionY: number;
+
+        // Handles verticle polygon lines
+        // NOTE: Vertical `raySlope` is handled as a very large number, but not infinity
+        if (currentEdge.slope == Infinity || currentEdge.slope == -Infinity) {
+          collisionX = currentEdge.minX;
+          collisionY = raySlope*collisionX + rayYIntercept;
+        } else {
+          collisionX = (rayYIntercept - currentEdge.b) / (currentEdge.slope - raySlope);
+          collisionY = currentEdge.slope*collisionX + currentEdge.b;
+        }
+        
+        // Need a good enough buffer for floating point errors           
+        if (collisionX <= currentEdge.maxX + 0.00001 && collisionX >= currentEdge.minX - 0.00001 && 
+            collisionY <= currentEdge.maxY + 0.00001 && collisionY >= currentEdge.minY - 0.00001) {
+
+              // Needs to be within the outer edge line bounds as well
+              if (collisionX <= outerEdge.maxX + 0.00001 && collisionX >= outerEdge.minX - 0.00001 && 
+                collisionY <= outerEdge.maxY + 0.00001 && collisionY >= outerEdge.minY - 0.00001) {
+                this.allPoints.push(new Phaser.Geom.Point(collisionX, collisionY))
+              }
+        }
+    
+        // TODO: Circumstance for when collisions are equal to line edge
+      }
+    }
+
+    // Set number of points
+    this.numPoints = this.allPoints.length;
 
     // Setup controls for user
     this.keyUP = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.UP);
