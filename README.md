@@ -29,3 +29,10 @@ The following represents the major steps for this project:
 Currently, the technical stack will be:
 * Frontend: Typescript, Phaser Framework
 * Backend: Typescript/JVM language (Scala)
+
+
+## Docker commands
+
+`docker build -t ashirsc/io-example-game .`
+
+`docker run -p 3000:3000 -d ashirsc/io-example-game`
