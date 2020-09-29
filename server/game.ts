@@ -33,6 +33,7 @@ export default class Game {
   start(socket: Socket, params: any) {
     const map = new GameMap(2)
     console.log(map)
+    socket.emit(Constants.MSG_TYPES.JOIN_GAME + '_response', map)
 
   }
 
