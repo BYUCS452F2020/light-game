@@ -1,18 +1,19 @@
+import { Socket } from 'socket.io';
+
+
 export class GameMap {
 
     height:number
     width: number
     obstacles: Obstacle[]
     levers: Lever[]
-    hiddenPlayers: HiddenPlayer[]
-    lightPlayer: LightPlayer
     constructor(nPlayers:number) {
         this.height = 500
         this.width = 500
         this.obstacles = []
         this.levers = []
-        this.hiddenPlayers = []
-        this.lightPlayer = new LightPlayer(new MapLocation(this.height/2, this.width/2), 90)
+        // this.hiddenPlayers = []
+        // this.lightPlayer = new LightPlayer(new MapLocation(this.height/2, this.width/2), 90)
 
         //set obstacles
         for (let i = 0; i < 8; i++) {
@@ -28,41 +29,44 @@ export class GameMap {
         }
 
         // set hidden players
-        for (let i = 0; i < nPlayers; i++) {
-            let position = new MapLocation(getRandomInt(this.width), getRandomInt(this.height))
-            this.hiddenPlayers.push(new HiddenPlayer(position))
-        }
+        // for (let i = 0; i < nPlayers; i++) {
+        //     let position = new MapLocation(getRandomInt(this.width), getRandomInt(this.height))
+        //     this.hiddenPlayers.push(new Player(position))
+        // }
     }
 }
-function getRandomInt(max:number) {
-    return Math.floor(Math.random() * Math.floor(max));
-  }
 
-class LightPlayer {
-    orientation:number
-    position:MapLocation
-    flashlight: Flashlight
-    constructor(position:MapLocation, orientation: number) {
+
+
+export class Player {
+    position: MapLocation
+    username: string
+    hp: number
+    socket:Socket
+    constructor(username:string, socket:Socket, position:MapLocation) {
         this.position = position
-        this.orientation = orientation
+        this.username = username
+        this.hp = 100
+        this.socket = socket
+    }
+}
+
+export class LightPlayer extends Player {
+    orientation:number
+    flashlight: Flashlight
+    constructor(player:Player) {
+        super(player.username, player.socket,player.position)
+        this.orientation = 0
         this.flashlight =  new Flashlight()
     }
 }
+
 class Flashlight {
     fov:number
     constructor() {
         this.fov = 40
     }
 }
-
-class HiddenPlayer {
-    position: MapLocation
-    constructor(position:MapLocation) {
-        this.position = position
-    }
-}
-
-
 
 class Obstacle {
 
@@ -80,7 +84,7 @@ class Obstacle {
     }
 }
  
-class MapLocation {
+export class MapLocation {
     x:number
     y:number
 
@@ -89,6 +93,7 @@ class MapLocation {
         this.y = y
     }
 }
+
 class Lever {
     polygonId: string
     side: number
@@ -99,3 +104,7 @@ class Lever {
         this.side = Math.floor(Math.random() * obstacle.points.length)
     }
 }
+
+export function getRandomInt(max:number) {
+    return Math.floor(Math.random() * Math.floor(max));
+  }

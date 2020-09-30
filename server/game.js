@@ -1,7 +1,7 @@
 "use strict";
 exports.__esModule = true;
-var Constants = require('../shared/constants.js');
 var map_1 = require("./map");
+var Constants = require('../shared/constants.js');
 var Game = (function () {
     function Game() {
         var _this = this;
@@ -15,12 +15,14 @@ var Game = (function () {
         setInterval(function () { return _this.ping(); }, 1000 / 60);
     }
     Game.prototype.ping = function () {
+        this.sockets.forEach(function (socket) {
+            socket.emit('ping');
+        });
     };
     Game.prototype.start = function (socket, params) {
-        var _this = this;
-        Object.keys(this.sockets).forEach(function (k, i) {
-            var _a;
-            (_a = _this.sockets.get(k)) === null || _a === void 0 ? void 0 : _a.emit(Constants.MSG_TYPES.START_GAME, JSON.stringify(_this.map));
+        var jsonMap = JSON.stringify(this.map);
+        this.sockets.forEach(function (socket) {
+            socket.emit(Constants.MSG_TYPES.START_GAME, jsonMap);
         });
     };
     Game.prototype.addPlayer = function (socket, username) {

@@ -2,11 +2,11 @@ import express  from "express";
 // const webpack = require('webpack');
 // const webpackDevMiddleware = require('webpack-dev-middleware');
 const socketio = require('socket.io');
-
 const Constants = require('../shared/constants');
 // const webpackConfig = require('../../webpack.dev.js');
 
 import { Socket } from 'socket.io';
+import { MapLocation } from "./domain";
 import Game from './game';
 
 
@@ -42,8 +42,8 @@ io.on('connection', (socket: Socket) => {
 
   socket.on(Constants.MSG_TYPES.JOIN_GAME, (username: string) => game.addPlayer(socket, username));
   socket.on(Constants.MSG_TYPES.START_GAME, (params: any) => game.start(socket, params));
-  socket.on(Constants.MSG_TYPES.INPUT, (dir: string) => game.handleInput(socket, dir));
-  socket.on('disconnect', () => game.removePlayer(socket));
+  socket.on(Constants.MSG_TYPES.INPUT, (position: MapLocation) => game.handleInput(socket, position));
+  socket.on('disconnect', () => game.players.delete(socket.id));
 });
 
 
