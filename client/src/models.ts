@@ -9,7 +9,8 @@ export class GameMap {
     lightPlayer: LightPlayer
 }
 
-class Obstacle {
+// Copied from server
+export class Obstacle {
     id: string
     points : MapLocation[]
 }

@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser'
 import { Line } from './line'
 import { priorityQueue } from './priority_queue'
-import { GameMap, Player, MapLocation } from './models'
+import { GameMap, Player, MapLocation, Obstacle } from './models'
 import ioclient from 'socket.io-client';
 
 import Constants from '../../shared/constants'
@@ -12,9 +12,9 @@ export class GameState extends Phaser.Scene {
 
   socketClient: SocketIOClient.Socket
 
-  allPoints: Phaser.Geom.Point[] = []
+  allPoints: MapLocation[] = []
   allEdges: Line[] = []
-  allPolygons: {polygon: Phaser.Geom.Polygon, color: number}[] = []
+  allPolygons: {polygon: Obstacle, color: number}[] = []
 
   numPoints: number = 0;
   numEdges: number = 0;
@@ -57,19 +57,29 @@ export class GameState extends Phaser.Scene {
     preload() {
       this.socketClient = ioclient('http://localhost:3000');
       this.socketClient.emit(Constants.MSG_TYPES.JOIN_GAME, this.circleUsername);
-      this.socketClient.on(Constants.MSG_TYPES.START_GAME, function(gameMap: object) {
+      this.socketClient.on(Constants.MSG_TYPES.START_GAME, (startGameObject: object) => {
         console.log("START GAME!")
+        const isGameMapGenerated = JSON.parse(startGameObject['isGameMapGenerated'])
+        const gameMap = JSON.parse(startGameObject['map'])
+
+        console.log(isGameMapGenerated)
         console.log(gameMap)
-        console.log(gameMap['map'])
         // TODO: Test on different sized monitors that have higher pixel densities than others.
         // Thus, rooms either
         // - need to be based on a large minimum fixed size
         // - need to zoom in for large screens
 
-        const width = JSON.parse(gameMap['map'])["height"];
-        const height = JSON.parse(gameMap['map'])["width"];
-        GameState.roomWidth = width;
-        GameState.roomHeight = height;
+        // const polygons = gameMap["obstacles"]
+
+        // Get game room information from server
+        GameState.roomWidth = gameMap["height"];
+        GameState.roomHeight = gameMap["width"];
+        this.numEdges = gameMap['numEdges']
+        this.numPoints = gameMap['numPoints']
+        this.numPolygons = gameMap['numPolygons']
+        this.allEdges = gameMap['allEdges']
+        this.allPoints = gameMap['allPoints']
+        this.allPolygons = gameMap['allPolygons']
       })
       this.socketClient.on(Constants.MSG_TYPES.JOIN_GAME, (args: object) => {
         console.log("JOIN GAME!");
@@ -89,8 +99,8 @@ export class GameState extends Phaser.Scene {
       })
       // TODO: This should be renamed to better describe movement input
       this.socketClient.on(Constants.MSG_TYPES.INPUT, (data: any[]) => {
-        console.log("GAME INPUT");
-        console.log(data)
+        // console.log("GAME INPUT");
+        // console.log(data)
         this.circleX = data[0]
         this.circleY = data[1]
         // console.log(players['players'])
@@ -104,110 +114,7 @@ export class GameState extends Phaser.Scene {
   }
 
    create() {
-    let polygon = new Phaser.Geom.Polygon()
-    polygon.setTo([
-      400, 100,
-      200, 278,
-      340, 430,
-      650, 80
-    ]);
-    
-    let polygon2 = new Phaser.Geom.Polygon()
-    polygon2.setTo([
-      0, 0,
-      GameState.roomWidth, 0,
-      GameState.roomWidth, GameState.roomHeight,
-      0, GameState.roomHeight
-    ]);
-
-    // TODO: Player is allowed to slip between polygons when they overlap
-    // let polygon3 = generatePolygon(3, 200, 200, 300);
-    let polygon3 = new Phaser.Geom.Polygon()
-    polygon3.setTo([
-      200, 200,
-      300, 278,
-      340, 430,
-    ]);
-    
     this.graphics = this.add.graphics({ x: 0, y: 0, lineStyle: { width: 4, color: 0xaa00aa } });
-    
-    // Global object setting
-    // Drawn in the order of this list
-    this.allPolygons = [{polygon: polygon2, color: 0xf0f0f0},
-                  {polygon: polygon, color: 0x00aa00},
-                  {polygon: polygon3, color: 0xff0000}] 
-    this.numPolygons = this.allPolygons.length
-
-    this.allEdges = []
-    
-    // Populates the edges object with all the polygons
-    for (let polygonIndex = 0; polygonIndex < this.numPolygons; ++polygonIndex) {
-      const currentPolygon = this.allPolygons[polygonIndex].polygon;
-      let previousPoint = currentPolygon.points[0];
-      let currentPoint;
-      
-      for (let index = 1; index <= currentPolygon.points.length; ++index) {
-        if (index == currentPolygon.points.length) {
-          currentPoint = currentPolygon.points[0];
-          this.allEdges.push(new Line(currentPoint.x, currentPoint.y, previousPoint.x, previousPoint.y));
-          break;
-        } else {
-          currentPoint = currentPolygon.points[index];
-          this.allEdges.push(new Line(currentPoint.x, currentPoint.y, previousPoint.x, previousPoint.y));
-          previousPoint = currentPoint;
-        }
-      }
-    }
-    
-    // Update number of edges
-    this.numEdges = this.allEdges.length;
-
-    // Ordering doesn't matter here, though we add points that are later generated from collisions between polygons
-    this.allPoints = polygon.points.concat(polygon2.points).concat(polygon3.points); 
-    for (let edgeIndex = 0; edgeIndex < this.numEdges; ++edgeIndex) {
-
-      const outerEdge = this.allEdges[edgeIndex];
-      outerEdge.x1
-
-      const diffX: number = outerEdge.x1 - outerEdge.x2;
-      const diffY: number = outerEdge.y1 - outerEdge.y2;
-      const rayAngle: number = Math.atan2(diffY, diffX); // Used for priority queue when added later
-      const raySlope = Math.tan(rayAngle);
-      const rayYIntercept: number = -(raySlope)*outerEdge.x2 + outerEdge.y2
-    
-      // Checks for movement line collision with all polygon lines
-      for (let innerIndex = edgeIndex+1; innerIndex < this.numEdges; ++innerIndex) {
-        const currentEdge: Line = this.allEdges[innerIndex];
-        let collisionX: number;
-        let collisionY: number;
-
-        // Handles verticle polygon lines
-        // NOTE: Vertical `raySlope` is handled as a very large number, but not infinity
-        if (currentEdge.slope == Infinity || currentEdge.slope == -Infinity) {
-          collisionX = currentEdge.minX;
-          collisionY = raySlope*collisionX + rayYIntercept;
-        } else {
-          collisionX = (rayYIntercept - currentEdge.b) / (currentEdge.slope - raySlope);
-          collisionY = currentEdge.slope*collisionX + currentEdge.b;
-        }
-        
-        // Need a good enough buffer for floating point errors           
-        if (collisionX <= currentEdge.maxX + 0.00001 && collisionX >= currentEdge.minX - 0.00001 && 
-            collisionY <= currentEdge.maxY + 0.00001 && collisionY >= currentEdge.minY - 0.00001) {
-
-              // Needs to be within the outer edge line bounds as well
-              if (collisionX <= outerEdge.maxX + 0.00001 && collisionX >= outerEdge.minX - 0.00001 && 
-                collisionY <= outerEdge.maxY + 0.00001 && collisionY >= outerEdge.minY - 0.00001) {
-                this.allPoints.push(new Phaser.Geom.Point(collisionX, collisionY))
-              }
-        }
-    
-        // TODO: Circumstance for when collisions are equal to line edge
-      }
-    }
-
-    // Set number of points
-    this.numPoints = this.allPoints.length;
 
     // Setup controls for user
     this.keyUP = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.UP);
@@ -282,13 +189,7 @@ export class GameState extends Phaser.Scene {
     }
 
     const location: MapLocation = new MapLocation(nextPointX, nextPointY);
-    console.log("NEXT LOCATION")
-    console.log(location)
     this.socketClient.emit(Constants.MSG_TYPES.INPUT, location);
-
-    // const returnValue = this.handleMovement(this.circleX, this.circleY, nextPointX, nextPointY)
-    // this.circleX = returnValue[0]
-    // this.circleY = returnValue[1]
   }
 
   // Whether the hidden player was caught in the light the last frame
@@ -318,7 +219,9 @@ export class GameState extends Phaser.Scene {
     for (let index = 0; index < this.numPolygons; ++index) {
       const currentPolygon = this.allPolygons[index]
       this.graphics.fillStyle(currentPolygon.color)
-      this.graphics.fillPoints(currentPolygon.polygon.points, true);
+      // TODO: Do not calculate this every frame
+      const interpretablePoints: Phaser.Geom.Point[] = currentPolygon.polygon.points.map((maplocation: MapLocation) => new Phaser.Geom.Point(maplocation.x, maplocation.y))
+      this.graphics.fillPoints(interpretablePoints, true);
     }
 
     // TODO: Draw the players that have joined the game
@@ -359,7 +262,7 @@ export class GameState extends Phaser.Scene {
   
   // Generate all the rays needed for the game
   for (let outerIndex = 0; outerIndex < this.numPoints; ++outerIndex) {  
-    const currentPoint: Phaser.Geom.Point = this.allPoints[outerIndex];
+    const currentPoint: MapLocation = this.allPoints[outerIndex];
     const diffX: number = currentPoint.x - this.circleX;
     const diffY: number = currentPoint.y - this.circleY;
     const rayAngle: number = Math.atan2(diffY, diffX); // Used for priority queue when added later
@@ -403,7 +306,9 @@ export class GameState extends Phaser.Scene {
       let collisionY: number;
       // Handles verticle polygon lines
       // NOTE: Vertical `raySlope` is handled as a very large number, but not infinity
-      if (currentEdge.slope == Infinity || currentEdge.slope == -Infinity) {
+      // NOTE: Infinity values cannot be sent over socketio, thus we account 'null' values in replacement of Infinity
+      // TODO: We can fix the above note to make more sense.
+      if (currentEdge.slope == null || currentEdge.slope == Infinity || currentEdge.slope == -Infinity) {
         collisionX = currentEdge.minX;
         collisionY = raySlope*collisionX + rayYIntercept;
       } else {
@@ -423,7 +328,7 @@ export class GameState extends Phaser.Scene {
             // Also check if angle to circle is the same
             const distanceToLightOrigin = Math.sqrt(Math.pow(collisionX - this.circleX, 2) + Math.pow(collisionY - this.circleY, 2))
             const angleToLight = Math.atan2(collisionY - this.circleY, collisionX - this.circleX)
-            
+
             if (distanceToLightOrigin < currentCollisionDistance && //Check it is closer
               ((angleToLight < rayAngle + 0.001 && angleToLight > rayAngle - 0.001))) { //Check it is in the direction of the ray (including if ray angles jump from 0 to 360 or visa versa)
                 bestCollisionSoFar = {x:collisionX, y:collisionY}

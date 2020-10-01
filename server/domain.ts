@@ -7,6 +7,18 @@ export class GameMap {
     width: number
     obstacles: Obstacle[]
     levers: Lever[]
+
+    // More specific data about the game map (given to each player)
+    allPoints: MapLocation[] = []
+    allEdges: Line[] = []
+    allPolygons: {polygon: Obstacle, color: number}[] = []
+  
+    numPoints: number = 0;
+    numEdges: number = 0;
+    numPolygons: number = 0;
+
+    isGameMapGenerated: boolean = false;
+
     constructor(nPlayers:number) {
         this.height = 500
         this.width = 500
@@ -47,7 +59,99 @@ export class GameMap {
         //     let position = new MapLocation(getRandomInt(this.width), getRandomInt(this.height))
         //     this.hiddenPlayers.push(new Player(position))
         // }
+        this.getMapInformationCached()
     }
+
+    getMapInformationCached() {    
+        const mapPolygons = this.obstacles
+    
+        // Global object setting
+        // Drawn in the order of this list
+        this.allPolygons = []
+        this.numPolygons = mapPolygons.length;
+        this.allPoints = []
+        for (let index = 0; index < mapPolygons.length; ++index) {
+          // TODO: All polygons are green (and drawn in this order)
+          this.allPolygons.push({polygon: mapPolygons[index], color: 0x00aa00}); 
+    
+          // Ordering doesn't matter here, though we add points that are later generated from collisions between polygons
+          this.allPoints = this.allPoints.concat(mapPolygons[index].points)
+        }
+    
+        this.allEdges = []
+        
+        // Populates the edges object with all the polygons
+        for (let polygonIndex = 0; polygonIndex < this.numPolygons; ++polygonIndex) {
+          const currentPolygon = this.allPolygons[polygonIndex].polygon;
+          let previousPoint: MapLocation = currentPolygon.points[0];
+          let currentPoint: MapLocation;
+          
+          for (let index = 1; index <= currentPolygon.points.length; ++index) {
+            if (index == currentPolygon.points.length) {
+              currentPoint = currentPolygon.points[0];
+              this.allEdges.push(new Line(currentPoint.x, currentPoint.y, previousPoint.x, previousPoint.y));
+              break;
+            } else {
+              currentPoint = currentPolygon.points[index];
+              this.allEdges.push(new Line(currentPoint.x, currentPoint.y, previousPoint.x, previousPoint.y));
+              previousPoint = currentPoint;
+            }
+          }
+        }
+        
+        // Update number of edges
+        this.numEdges = this.allEdges.length;
+    
+        // TODO: Player is allowed to slip between polygons when they overlap
+    
+        // Add points generated from collisions between polygons
+        for (let edgeIndex = 0; edgeIndex < this.numEdges; ++edgeIndex) {
+    
+          const outerEdge = this.allEdges[edgeIndex];
+          outerEdge.x1
+    
+          const diffX: number = outerEdge.x1 - outerEdge.x2;
+          const diffY: number = outerEdge.y1 - outerEdge.y2;
+          const rayAngle: number = Math.atan2(diffY, diffX); // Used for priority queue when added later
+          const raySlope = Math.tan(rayAngle);
+          const rayYIntercept: number = -(raySlope)*outerEdge.x2 + outerEdge.y2
+        
+          // Checks for movement line collision with all polygon lines
+          for (let innerIndex = edgeIndex+1; innerIndex < this.numEdges; ++innerIndex) {
+            const currentEdge: Line = this.allEdges[innerIndex];
+            let collisionX: number;
+            let collisionY: number;
+    
+            // Handles verticle polygon lines
+            // NOTE: Vertical `raySlope` is handled as a very large number, but not infinity
+            if (currentEdge.slope == Infinity || currentEdge.slope == -Infinity) {
+              collisionX = currentEdge.minX;
+              collisionY = raySlope*collisionX + rayYIntercept;
+            } else {
+              collisionX = (rayYIntercept - currentEdge.b) / (currentEdge.slope - raySlope);
+              collisionY = currentEdge.slope*collisionX + currentEdge.b;
+            }
+            
+            // Need a good enough buffer for floating point errors           
+            if (collisionX <= currentEdge.maxX + 0.00001 && collisionX >= currentEdge.minX - 0.00001 && 
+                collisionY <= currentEdge.maxY + 0.00001 && collisionY >= currentEdge.minY - 0.00001) {
+    
+                  // Needs to be within the outer edge line bounds as well
+                  if (collisionX <= outerEdge.maxX + 0.00001 && collisionX >= outerEdge.minX - 0.00001 && 
+                    collisionY <= outerEdge.maxY + 0.00001 && collisionY >= outerEdge.minY - 0.00001) {
+                    this.allPoints.push(new MapLocation(collisionX, collisionY))
+                  }
+            }
+        
+            // TODO: Circumstance for when collisions are equal to line edge
+          }
+        }
+    
+        // Set number of points
+        this.numPoints = this.allPoints.length;
+        this.isGameMapGenerated = true
+      }
+    
 }
 
 

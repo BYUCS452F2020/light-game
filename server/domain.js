@@ -16,6 +16,13 @@ exports.__esModule = true;
 exports.Line = exports.getRandomInt = exports.MapLocation = exports.Obstacle = exports.LightPlayer = exports.Player = exports.GameMap = void 0;
 var GameMap = (function () {
     function GameMap(nPlayers) {
+        this.allPoints = [];
+        this.allEdges = [];
+        this.allPolygons = [];
+        this.numPoints = 0;
+        this.numEdges = 0;
+        this.numPolygons = 0;
+        this.isGameMapGenerated = false;
         this.height = 500;
         this.width = 500;
         this.obstacles = [];
@@ -31,7 +38,68 @@ var GameMap = (function () {
         for (var i = 0; i < NUM_LEVERS; i++) {
             this.levers.push(new Lever(this.obstacles[getRandomInt(this.obstacles.length - 1)]));
         }
+        this.getMapInformationCached();
     }
+    GameMap.prototype.getMapInformationCached = function () {
+        var mapPolygons = this.obstacles;
+        this.allPolygons = [];
+        this.numPolygons = mapPolygons.length;
+        this.allPoints = [];
+        for (var index = 0; index < mapPolygons.length; ++index) {
+            this.allPolygons.push({ polygon: mapPolygons[index], color: 0x00aa00 });
+            this.allPoints = this.allPoints.concat(mapPolygons[index].points);
+        }
+        this.allEdges = [];
+        for (var polygonIndex = 0; polygonIndex < this.numPolygons; ++polygonIndex) {
+            var currentPolygon = this.allPolygons[polygonIndex].polygon;
+            var previousPoint = currentPolygon.points[0];
+            var currentPoint = void 0;
+            for (var index = 1; index <= currentPolygon.points.length; ++index) {
+                if (index == currentPolygon.points.length) {
+                    currentPoint = currentPolygon.points[0];
+                    this.allEdges.push(new Line(currentPoint.x, currentPoint.y, previousPoint.x, previousPoint.y));
+                    break;
+                }
+                else {
+                    currentPoint = currentPolygon.points[index];
+                    this.allEdges.push(new Line(currentPoint.x, currentPoint.y, previousPoint.x, previousPoint.y));
+                    previousPoint = currentPoint;
+                }
+            }
+        }
+        this.numEdges = this.allEdges.length;
+        for (var edgeIndex = 0; edgeIndex < this.numEdges; ++edgeIndex) {
+            var outerEdge = this.allEdges[edgeIndex];
+            outerEdge.x1;
+            var diffX = outerEdge.x1 - outerEdge.x2;
+            var diffY = outerEdge.y1 - outerEdge.y2;
+            var rayAngle = Math.atan2(diffY, diffX);
+            var raySlope = Math.tan(rayAngle);
+            var rayYIntercept = -(raySlope) * outerEdge.x2 + outerEdge.y2;
+            for (var innerIndex = edgeIndex + 1; innerIndex < this.numEdges; ++innerIndex) {
+                var currentEdge = this.allEdges[innerIndex];
+                var collisionX = void 0;
+                var collisionY = void 0;
+                if (currentEdge.slope == Infinity || currentEdge.slope == -Infinity) {
+                    collisionX = currentEdge.minX;
+                    collisionY = raySlope * collisionX + rayYIntercept;
+                }
+                else {
+                    collisionX = (rayYIntercept - currentEdge.b) / (currentEdge.slope - raySlope);
+                    collisionY = currentEdge.slope * collisionX + currentEdge.b;
+                }
+                if (collisionX <= currentEdge.maxX + 0.00001 && collisionX >= currentEdge.minX - 0.00001 &&
+                    collisionY <= currentEdge.maxY + 0.00001 && collisionY >= currentEdge.minY - 0.00001) {
+                    if (collisionX <= outerEdge.maxX + 0.00001 && collisionX >= outerEdge.minX - 0.00001 &&
+                        collisionY <= outerEdge.maxY + 0.00001 && collisionY >= outerEdge.minY - 0.00001) {
+                        this.allPoints.push(new MapLocation(collisionX, collisionY));
+                    }
+                }
+            }
+        }
+        this.numPoints = this.allPoints.length;
+        this.isGameMapGenerated = true;
+    };
     return GameMap;
 }());
 exports.GameMap = GameMap;
