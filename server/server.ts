@@ -42,7 +42,7 @@ io.on('connection', (socket: Socket) => {
 
   socket.on(Constants.MSG_TYPES.JOIN_GAME, (username: string) => game.addPlayer(socket, username));
   socket.on(Constants.MSG_TYPES.START_GAME, (params: any) => game.start(socket, params));
-  socket.on(Constants.MSG_TYPES.INPUT, (position: MapLocation) => game.handleInput(socket, position));
+  socket.on(Constants.MSG_TYPES.INPUT, (nextPosition: MapLocation) => game.handleMovementInput(socket, nextPosition));
   socket.on('disconnect', () => game.players.delete(socket.id));
 });
 

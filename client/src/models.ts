@@ -1,3 +1,5 @@
+import { Socket } from 'socket.io';
+
 export class GameMap {
     height:number
     width: number
@@ -12,9 +14,14 @@ class Obstacle {
     points : MapLocation[]
 }
 
-class MapLocation {
+export class MapLocation {
     x:number
     y:number
+
+    constructor(x:number,y:number) {
+        this.x = x
+        this.y = y
+    }
 }
 
 class Lever {
@@ -34,4 +41,11 @@ class LightPlayer {
 
 class Flashlight {
     fov:number
+}
+
+export class Player {
+    position: MapLocation
+    username: string
+    hp: number
+    socket:Socket
 }

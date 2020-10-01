@@ -20,6 +20,6 @@ io.on('connection', function (socket) {
     console.log('Player connected!', socket.id);
     socket.on(Constants.MSG_TYPES.JOIN_GAME, function (username) { return game.addPlayer(socket, username); });
     socket.on(Constants.MSG_TYPES.START_GAME, function (params) { return game.start(socket, params); });
-    socket.on(Constants.MSG_TYPES.INPUT, function (dir) { return game.handleInput(socket, dir); });
-    socket.on('disconnect', function () { return game.removePlayer(socket); });
+    socket.on(Constants.MSG_TYPES.INPUT, function (nextPosition) { return game.handleMovementInput(socket, nextPosition); });
+    socket.on('disconnect', function () { return game.players["delete"](socket.id); });
 });

@@ -5,13 +5,13 @@ export class GameConfig {
     config: Phaser.Types.Core.GameConfig;
 
     constructor(width, height, scene: new (config: string | Phaser.Types.Scenes.SettingsConfig) => GameState) {
-      GameState.gameWidth = width;
-      GameState.gameHeight = height;
+      GameState.roomWidth = width;
+      GameState.roomHeight = height;
 
       this.config = {
           type: Phaser.AUTO,
-          width,
-          height,
+          width: window.outerWidth,
+          height: window.outerHeight,
           physics: {
             default: 'arcade',
             arcade: {

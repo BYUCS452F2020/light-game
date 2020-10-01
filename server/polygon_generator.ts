@@ -1,7 +1,7 @@
-import * as Phaser from 'phaser'
-import { priorityQueue } from './priority_queue'
+import { priorityQueue } from '../client/src/priority_queue' // TODO: Put in shared folder
+import { MapLocation } from './domain';
 
-export function generatePolygon(numPoints: number, startX: number, startY: number, maxSize: number): Phaser.Geom.Polygon {
+export function generatePolygon(numPoints: number, startX: number, startY: number, maxSize: number): MapLocation[] {
 
     if (numPoints < 3) {
         numPoints = 3;
@@ -13,7 +13,7 @@ export function generatePolygon(numPoints: number, startX: number, startY: numbe
         rayAngleQueue.insert(randomAngle, randomAngle);
     }
 
-    let points = [startX, startY]
+    let points = [new MapLocation(startX, startY)]
     let previousX = startX;
     let previousY = startY;
 
@@ -23,17 +23,11 @@ export function generatePolygon(numPoints: number, startX: number, startY: numbe
         const rayLength = Math.random() * maxSize;
         console.log(`${angle*180/Math.PI} -> ${rayLength}`)
         
-        
         const newX = Math.cos(angle) * rayLength + previousX;
         const newY = Math.sin(angle) * rayLength + previousY;
         console.log([newX, newY])
-        points.push(newX, newY)
+        points.push(new MapLocation(newX, newY))
     }
 
-    console.log("DONE")
-    console.log(points)
-
-    let newPolygon = new Phaser.Geom.Polygon()
-    newPolygon.setTo(points);
-    return newPolygon;
+    return points;
 }
