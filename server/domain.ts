@@ -24,18 +24,7 @@ export class GameMap {
         this.width = 500
         this.obstacles = []
         this.levers = []
-        // this.hiddenPlayers = []
-        // this.lightPlayer = new LightPlayer(new MapLocation(this.height/2, this.width/2), 90)
-
-        //set obstacles
-        // for (let i = 0; i < 8; i++) {
-        //     const center = new MapLocation(getRandomInt(500), getRandomInt(500))
-        //     const ob = new Obstacle(center, 4)
-        //     this.obstacles.push(ob)
-        // }
-
-        // TODO: Random Polygon Generation
-        // let polygon3 = generatePolygon(3, 200, 200, 300);
+        
 
         const a1 = [new MapLocation(400, 100), new MapLocation(200, 278), new MapLocation(340, 430), new MapLocation(650, 80)]
         const ob1 = new Obstacle(a1)
@@ -54,11 +43,7 @@ export class GameMap {
             this.levers.push(new Lever(this.obstacles[getRandomInt(this.obstacles.length-1)]))
         }
 
-        // set hidden players
-        // for (let i = 0; i < nPlayers; i++) {
-        //     let position = new MapLocation(getRandomInt(this.width), getRandomInt(this.height))
-        //     this.hiddenPlayers.push(new Player(position))
-        // }
+      
         this.getMapInformationCached()
     }
 
@@ -161,6 +146,7 @@ export class Player {
     username: string
     hp: number
     socket:Socket
+    id:number
     constructor(username:string, socket:Socket, position:MapLocation) {
         this.position = position
         this.username = username
@@ -190,9 +176,12 @@ export class Obstacle {
 
     id: string
     points : MapLocation[]
-    constructor(points:MapLocation[]) {
+    color: Color
+    constructor(points:MapLocation[], color?:Color) {
         this.id = Math.floor(Math.random() * Math.floor(10000)).toString()
         this.points = points
+        if (color) this.color = color
+        else this.color = new Color()
     }
 }
  
@@ -245,4 +234,18 @@ export function getRandomInt(max:number) {
         this.slope = (y2-y1)/(x2-x1)
         this.b = (-this.slope*x1 + y1)
     }
+}
+
+class Color {
+  r:number
+  g:number
+  b:number
+  constructor(r?:number, g?:number, b?:number) {
+    if(r) this.r = r
+    else r = getRandomInt(255)
+    if(g) this.g = g
+    else g = getRandomInt(255)
+    if(b) this.b = b
+    else b = getRandomInt(255)
+  }
 }

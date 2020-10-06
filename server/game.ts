@@ -72,7 +72,7 @@ export default class Game {
   }
 
   // Movements for players, and collision checking
-  handleMovement(currentX:number, currentY:number, nextPointX: number, nextPointY: number) {
+  handleMovement(currentX:number, currentY:number, nextPointX: number, nextPointY: number) : number[] {
     const diffX: number = nextPointX - currentX;
     const diffY: number = nextPointY - currentY;
     const distanceAttemptingToTravel: number = Math.sqrt(Math.pow(diffX,2) + Math.pow(diffY,2))
@@ -163,15 +163,12 @@ export default class Game {
     if (!player) {
       throw new Error()
     }
-    // player.position = position
-    // this.players.set(socket.id, player)
-    // console.log("HANDLE MOVEMENT INPUT")
+   
     let nextPointX = nextPosition.x;
     let nextPointY = nextPosition.y;
 
     // Returns calculated x and y coordinates based on world map polygon positions
     const returnValue = this.handleMovement(player.position.x, player.position.y, nextPointX, nextPointY)
-    socket.emit(Constants.MSG_TYPES.INPUT, [returnValue[0],returnValue[1]])
     player.position.x = returnValue[0]
     player.position.y = returnValue[1]
   }
