@@ -1,8 +1,9 @@
 import { Socket } from 'socket.io';
+import * as Encoder from '../shared/encoder';
 // import * as Phaser from 'phaser'
 import { GameMap, MapLocation, Player, LightPlayer, getRandomInt, Line, Obstacle } from './domain';
 
-const Constants = require('../shared/constants.js');
+import { Constants } from '../shared/constants';
 
 export default class Game {
 
@@ -18,19 +19,24 @@ export default class Game {
   }
 
   generatePlayerArray() {
-    let playerArray: {username: string, position: MapLocation, hp: number}[] = [];
+    let playerArray: {username: string, id: number, position: MapLocation, hp: number}[] = [];
     this.players.forEach((value: Player, key: string) => {
-      playerArray.push({username: value.username, position: value.position, hp: value.hp})
+      playerArray.push({username: value.username, id: value.id, position: value.position, hp: value.hp})
     });
     return playerArray;
   }
 
   start(socket: Socket, params: any) {
-    let [id, lightPlayer] = Array.from(this.players)[getRandomInt(this.players.size)]
-    lightPlayer = new LightPlayer(lightPlayer)
-    this.players.set(id, lightPlayer)
+    // Needs at least 2 players and the game map ready to send
+    const isGameReadyToStart = (this.players ? this.players.size > 1 : false) && this.map.isGameMapGenerated
 
-    console.log("STARTING GAME!")
+    // lightPlayerId is the same as the lightPlayer
+    let [_, lightPlayer] = Array.from(this.players)[getRandomInt(this.players.size)]
+
+    // lightPlayer = new LightPlayer(lightPlayer)
+    // this.players.set(id, lightPlayer)
+
+    // console.log("STARTING GAME!")
     // console.log(this.players)
     // console.log(this.players.values())
 
@@ -38,10 +44,10 @@ export default class Game {
     this.players.forEach(player => {
       // TODO: Better handle when game map generation is slow
       // TODO: Current game map returns 30 points for 11 edges. Find out why
-      if (this.map.isGameMapGenerated) {
-        socket.emit(Constants.MSG_TYPES.START_GAME, { isGameMapGenerated: this.map.isGameMapGenerated, map: jsonMap, players: this.generatePlayerArray() })
+      if (isGameReadyToStart) {
+        player.socket.emit(Constants.MSG_TYPES_START_GAME, { isStarted: isGameReadyToStart, map: jsonMap, players: this.generatePlayerArray(), lightPlayerIds: `[${lightPlayer.id}, -1]` })
       } else {
-        socket.emit(Constants.MSG_TYPES.START_GAME, { isGameMapGenerated: this.map.isGameMapGenerated })
+        player.socket.emit(Constants.MSG_TYPES_START_GAME, { isStarted: isGameReadyToStart })
       }
     })
 
@@ -55,8 +61,12 @@ export default class Game {
     const y = this.map.height * (0.25 + Math.random() * 0.5);
     console.log("ADDING PLAYER!")
     console.log(x,y)
-    this.players.set(socket.id, new Player(username, socket, new MapLocation(x, y)))
-    socket.emit(Constants.MSG_TYPES.JOIN_GAME, {x, y})
+
+    // TODO: If two people join at the same time, this could be a bug
+    const uniquePlayerId = this.players.size
+    const newPlayer = new Player(username, uniquePlayerId, socket, new MapLocation(x, y), 90 * Math.PI/180)
+    this.players.set(socket.id, newPlayer)
+    socket.emit(Constants.MSG_TYPES_JOIN_GAME, {x, y, id: uniquePlayerId})
   }
 
   // Bounds an angle between -PI and PI (radians version of -180 -> 180 degrees)
@@ -158,19 +168,60 @@ export default class Game {
     return [currentX,currentY];
   }
 
-  handleMovementInput(socket: Socket, nextPosition: MapLocation) {
+  handleMovementInput(socket: Socket, encodedMessage: Uint16Array) {
+    // console.log("HANDLE MOVEMENT INPUT 1")
     const player = this.players.get(socket.id)
     if (!player) {
-      throw new Error()
+      return
+      // Sometimes players will try to address movement before they are registered, so comment this out for now
+      //throw new Error()
     }
+
+    // console.log(`HANDLE MOVEMENT INPUT: ${player.position.x}, ${player.position.y}`)
+    let playerInput = Encoder.decodeInput(encodedMessage)
+    // console.log(playerInput)
    
-    let nextPointX = nextPosition.x;
-    let nextPointY = nextPosition.y;
+    // let nextPointX = nextPosition.x;
+    // let nextPointY = nextPosition.y;
+
+    // decodeInput(encodedMessage)
+    let nextPointX = player.position.x;
+    let nextPointY = player.position.y;
+
+    if (playerInput.keyUP)
+    {
+      nextPointY -= 3
+    }
+    if (playerInput.keyDOWN)
+    {
+      nextPointY += 3
+    }
+    if (playerInput.keyLEFT)
+    {
+      nextPointX -= 3
+    }
+    if (playerInput.keyRIGHT)
+    {
+      nextPointX += 3
+    }
+
+    // Make player look at the mouse position
+    const diffX = playerInput.mouseX - player.position.x;
+    const diffY = playerInput.mouseY - player.position.y;
+    player.visionDirection = Math.atan2(diffY, diffX);
+
+    console.log(`${socket.id} -> ${diffX}, ${diffY}, ${player.visionDirection * 180/Math.PI}`)
+
+    // Make player look at the mouse position
+    // const diffX = this.mouse.x - this.circleX;
+    // const diffY = this.mouse.y - this.circleY;
+    // this.flashlightDirection = Math.atan2(diffY, diffX);
 
     // Returns calculated x and y coordinates based on world map polygon positions
     const returnValue = this.handleMovement(player.position.x, player.position.y, nextPointX, nextPointY)
     player.position.x = returnValue[0]
     player.position.y = returnValue[1]
+    // console.log(`${player.position.x}, ${player.position.y}`)
   }
 
   handlePlayerKeyboardInput() {
@@ -187,14 +238,17 @@ export default class Game {
     // IDK if we want to handle this on the frontend or not.
     this.players.forEach((player, id) => {
       if (player.hp <= 0) {
-        player.socket.emit(Constants.MSG_TYPES.GAME_OVER);
+        player.socket.emit(Constants.MSG_TYPES_GAME_OVER);
         this.players.delete(id);
       }
     });
 
+    const playerArray = Encoder.encodeUpdate(this.players)
+    // console.log(playerArray)
+
     // Send a game update to each player 
     this.players.forEach(player => {
-      player.socket.emit(Constants.MSG_TYPES.GAME_UPDATE, {players: this.generatePlayerArray() });
+      player.socket.emit(Constants.MSG_TYPES_GAME_UPDATE, playerArray);
     });
 
   }

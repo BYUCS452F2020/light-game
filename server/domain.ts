@@ -27,13 +27,13 @@ export class GameMap {
         
 
         const a1 = [new MapLocation(400, 100), new MapLocation(200, 278), new MapLocation(340, 430), new MapLocation(650, 80)]
-        const ob1 = new Obstacle(a1)
+        const ob1 = new Obstacle(a1, 0x00aa0)
 
         const a2 = [new MapLocation(0, 0), new MapLocation(this.width, 0), new MapLocation(this.width, this.height), new MapLocation(0, this.height)]
-        const ob2 = new Obstacle(a2)
+        const ob2 = new Obstacle(a2, 0x0000aa)
 
         const a3 = [new MapLocation(200, 200), new MapLocation(300, 278), new MapLocation(340, 430)]
-        const ob3 = new Obstacle(a3)
+        const ob3 = new Obstacle(a3, 0xaaaa00)
 
         this.obstacles = [ob1, ob2, ob3]
 
@@ -57,10 +57,11 @@ export class GameMap {
         this.allPoints = []
         for (let index = 0; index < mapPolygons.length; ++index) {
           // TODO: All polygons are green (and drawn in this order)
-          this.allPolygons.push({polygon: mapPolygons[index], color: 0x00aa00}); 
+          const currentPolygon = mapPolygons[index]
+          this.allPolygons.push({polygon: currentPolygon, color: currentPolygon.color}); 
     
           // Ordering doesn't matter here, though we add points that are later generated from collisions between polygons
-          this.allPoints = this.allPoints.concat(mapPolygons[index].points)
+          this.allPoints = this.allPoints.concat(currentPolygon.points)
         }
     
         this.allEdges = []
@@ -147,11 +148,14 @@ export class Player {
     hp: number
     socket:Socket
     id:number
-    constructor(username:string, socket:Socket, position:MapLocation) {
+    visionDirection: number
+    constructor(username:string, id: number, socket:Socket, position:MapLocation, visionDirection: number) {
         this.position = position
+        this.id = id;
         this.username = username
         this.hp = 100
         this.socket = socket
+        this.visionDirection = visionDirection
     }
 }
 
@@ -159,7 +163,7 @@ export class LightPlayer extends Player {
     orientation:number
     flashlight: Flashlight
     constructor(player:Player) {
-        super(player.username, player.socket,player.position)
+        super(player.username, player.id, player.socket, player.position, player.visionDirection)
         this.orientation = 0
         this.flashlight =  new Flashlight()
     }
@@ -176,12 +180,11 @@ export class Obstacle {
 
     id: string
     points : MapLocation[]
-    color: Color
-    constructor(points:MapLocation[], color?:Color) {
+    color: number
+    constructor(points:MapLocation[], color:number) {
         this.id = Math.floor(Math.random() * Math.floor(10000)).toString()
         this.points = points
-        if (color) this.color = color
-        else this.color = new Color()
+        this.color = color
     }
 }
  

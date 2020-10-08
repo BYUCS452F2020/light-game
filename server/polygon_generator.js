@@ -18,7 +18,6 @@ function generatePolygon(numPoints, startX, startY, maxSize) {
     for (var index = 0; index < numPoints - 1; ++index) {
         var angle = rayAngleQueue.pop();
         var rayLength = Math.random() * maxSize;
-        console.log(angle * 180 / Math.PI + " -> " + rayLength);
         var newX = Math.cos(angle) * rayLength + previousX;
         var newY = Math.sin(angle) * rayLength + previousY;
         console.log([newX, newY]);

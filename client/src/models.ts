@@ -49,4 +49,5 @@ export class Player {
     username: string
     hp: number
     socket:Socket
+    id:number
 }

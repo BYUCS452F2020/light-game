@@ -5,7 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 exports.__esModule = true;
 var express_1 = __importDefault(require("express"));
 var socketio = require('socket.io');
-var Constants = require('../shared/constants');
+var constants_1 = require("../shared/constants");
 var game_1 = __importDefault(require("./game"));
 var app = express_1["default"]();
 app.all("/ping", function (req, res) {
@@ -18,8 +18,8 @@ var io = socketio(server);
 var game = new game_1["default"]();
 io.on('connection', function (socket) {
     console.log('Player connected!', socket.id);
-    socket.on(Constants.MSG_TYPES.JOIN_GAME, function (username) { return game.addPlayer(socket, username); });
-    socket.on(Constants.MSG_TYPES.START_GAME, function (params) { return game.start(socket, params); });
-    socket.on(Constants.MSG_TYPES.INPUT, function (nextPosition) { return game.handleMovementInput(socket, nextPosition); });
+    socket.on(constants_1.Constants.MSG_TYPES_JOIN_GAME, function (username) { return game.addPlayer(socket, username); });
+    socket.on(constants_1.Constants.MSG_TYPES_START_GAME, function (params) { return game.start(socket, params); });
+    socket.on(constants_1.Constants.MSG_TYPES_INPUT, function (encodedMessage) { return game.handleMovementInput(socket, encodedMessage); });
     socket.on('disconnect', function () { return game.players["delete"](socket.id); });
 });

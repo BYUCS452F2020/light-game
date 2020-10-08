@@ -28,11 +28,11 @@ var GameMap = (function () {
         this.obstacles = [];
         this.levers = [];
         var a1 = [new MapLocation(400, 100), new MapLocation(200, 278), new MapLocation(340, 430), new MapLocation(650, 80)];
-        var ob1 = new Obstacle(a1);
+        var ob1 = new Obstacle(a1, 0x00aa0);
         var a2 = [new MapLocation(0, 0), new MapLocation(this.width, 0), new MapLocation(this.width, this.height), new MapLocation(0, this.height)];
-        var ob2 = new Obstacle(a2);
+        var ob2 = new Obstacle(a2, 0x0000aa);
         var a3 = [new MapLocation(200, 200), new MapLocation(300, 278), new MapLocation(340, 430)];
-        var ob3 = new Obstacle(a3);
+        var ob3 = new Obstacle(a3, 0xaaaa00);
         this.obstacles = [ob1, ob2, ob3];
         var NUM_LEVERS = 3;
         for (var i = 0; i < NUM_LEVERS; i++) {
@@ -46,8 +46,9 @@ var GameMap = (function () {
         this.numPolygons = mapPolygons.length;
         this.allPoints = [];
         for (var index = 0; index < mapPolygons.length; ++index) {
-            this.allPolygons.push({ polygon: mapPolygons[index], color: 0x00aa00 });
-            this.allPoints = this.allPoints.concat(mapPolygons[index].points);
+            var currentPolygon = mapPolygons[index];
+            this.allPolygons.push({ polygon: currentPolygon, color: currentPolygon.color });
+            this.allPoints = this.allPoints.concat(currentPolygon.points);
         }
         this.allEdges = [];
         for (var polygonIndex = 0; polygonIndex < this.numPolygons; ++polygonIndex) {
@@ -104,11 +105,13 @@ var GameMap = (function () {
 }());
 exports.GameMap = GameMap;
 var Player = (function () {
-    function Player(username, socket, position) {
+    function Player(username, id, socket, position, visionDirection) {
         this.position = position;
+        this.id = id;
         this.username = username;
         this.hp = 100;
         this.socket = socket;
+        this.visionDirection = visionDirection;
     }
     return Player;
 }());
@@ -116,7 +119,7 @@ exports.Player = Player;
 var LightPlayer = (function (_super) {
     __extends(LightPlayer, _super);
     function LightPlayer(player) {
-        var _this = _super.call(this, player.username, player.socket, player.position) || this;
+        var _this = _super.call(this, player.username, player.id, player.socket, player.position, player.visionDirection) || this;
         _this.orientation = 0;
         _this.flashlight = new Flashlight();
         return _this;
@@ -131,9 +134,10 @@ var Flashlight = (function () {
     return Flashlight;
 }());
 var Obstacle = (function () {
-    function Obstacle(points) {
+    function Obstacle(points, color) {
         this.id = Math.floor(Math.random() * Math.floor(10000)).toString();
         this.points = points;
+        this.color = color;
     }
     return Obstacle;
 }());
@@ -173,3 +177,20 @@ var Line = (function () {
     return Line;
 }());
 exports.Line = Line;
+var Color = (function () {
+    function Color(r, g, b) {
+        if (r)
+            this.r = r;
+        else
+            r = getRandomInt(255);
+        if (g)
+            this.g = g;
+        else
+            g = getRandomInt(255);
+        if (b)
+            this.b = b;
+        else
+            b = getRandomInt(255);
+    }
+    return Color;
+}());

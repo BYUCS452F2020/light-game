@@ -4,7 +4,8 @@ import { priorityQueue } from './priority_queue'
 import { GameMap, Player, MapLocation, Obstacle } from './models'
 import ioclient from 'socket.io-client';
 
-import Constants from '../../shared/constants'
+import * as Encoder from '../../shared/encoder';
+import { Constants } from '../../shared/constants'
 
 export class GameState extends Phaser.Scene {
   static roomWidth: number;
@@ -25,16 +26,23 @@ export class GameState extends Phaser.Scene {
   keyLEFT: Phaser.Input.Keyboard.Key;
   keyRIGHT: Phaser.Input.Keyboard.Key;
   
-  keyQ: Phaser.Input.Keyboard.Key;
-  keyW: Phaser.Input.Keyboard.Key;
-  keyA: Phaser.Input.Keyboard.Key;
-  keyS: Phaser.Input.Keyboard.Key;
+  keyExpandLight: Phaser.Input.Keyboard.Key;
+  keyRestrictLight: Phaser.Input.Keyboard.Key;
+  keyLightClockwise: Phaser.Input.Keyboard.Key;
+  keyLightCounterclockwise: Phaser.Input.Keyboard.Key;
+
+  mouse: Phaser.Input.Pointer;
+  previousMouseX: number = 0;
+  previousMouseY: number = 0;
 
   circleX: number = 200;
   circleY: number = 290;
+  playerId: number = -1; // Used to detect which player information is this person's
   circleUsername: string = "Test-UserName-" + Math.floor(Math.random() * 1000); // TODO: Not always unique
 
-  players: {username: string, position: MapLocation, hp: number}[]
+  players: {id: number, x: number, y:number}[]
+  lightPlayerIds: number[]
+  isLightPlayer: boolean // Cached version of above, but relative to this player's id
 
   light_polygon = new Phaser.Geom.Polygon()
   circle = new Phaser.Geom.Circle(this.circleX, this.circleY, 5);
@@ -43,6 +51,10 @@ export class GameState extends Phaser.Scene {
   hiddenX: number = 500;
   hiddenY: number = 500;
   hiddenCircle = new Phaser.Geom.Circle(this.hiddenX, this.hiddenY, 5);
+  hiddenDirection: number = 90 * Math.PI/180;
+  hiddenAngle: number = 90 * Math.PI/180;
+  hidden_polygon = new Phaser.Geom.Polygon();
+  hiddenIsFlashlight = true;
 
   flashlightAngle = 90 * Math.PI/180;
   flashlightDirection = 90 * Math.PI/180;
@@ -56,56 +68,76 @@ export class GameState extends Phaser.Scene {
 
     preload() {
       this.socketClient = ioclient('http://localhost:3000');
-      this.socketClient.emit(Constants.MSG_TYPES.JOIN_GAME, this.circleUsername);
-      this.socketClient.on(Constants.MSG_TYPES.START_GAME, (startGameObject: object) => {
+      this.socketClient.emit(Constants.MSG_TYPES_JOIN_GAME, this.circleUsername);
+      this.socketClient.on(Constants.MSG_TYPES_START_GAME, (startGameObject: object) => {
         console.log("START GAME!")
-        const isGameMapGenerated = JSON.parse(startGameObject['isGameMapGenerated'])
-        const gameMap = JSON.parse(startGameObject['map'])
+        console.log(startGameObject)
+        const isGameStarted = JSON.parse(startGameObject['isStarted'])
+        if (isGameStarted) {
+          const gameMap = JSON.parse(startGameObject['map'])
+          const lightPlayerIds = JSON.parse(startGameObject['lightPlayerIds'])
 
-        console.log(isGameMapGenerated)
-        console.log(gameMap)
-        // TODO: Test on different sized monitors that have higher pixel densities than others.
-        // Thus, rooms either
-        // - need to be based on a large minimum fixed size
-        // - need to zoom in for large screens
+          this.lightPlayerIds = lightPlayerIds;
+          console.log(lightPlayerIds);
+          this.isLightPlayer = this.lightPlayerIds.includes(this.playerId);
+          // Include's extra metadata about each player that we do not need to store (but could be useful later on [leaderboards])
+          // const players = JSON.parse(startGameObject['map'])
 
-        // const polygons = gameMap["obstacles"]
+          
+          // this.players = players
 
-        // Get game room information from server
-        GameState.roomWidth = gameMap["height"];
-        GameState.roomHeight = gameMap["width"];
-        this.numEdges = gameMap['numEdges']
-        this.numPoints = gameMap['numPoints']
-        this.numPolygons = gameMap['numPolygons']
-        this.allEdges = gameMap['allEdges']
-        this.allPoints = gameMap['allPoints']
-        this.allPolygons = gameMap['allPolygons']
+          // console.log(isGameStarted)
+          // console.log(gameMap)
+          // TODO: Test on different sized monitors that have higher pixel densities than others.
+          // Thus, rooms either
+          // - need to be based on a large minimum fixed size
+          // - need to zoom in for large screens
+  
+          // const polygons = gameMap["obstacles"]
+  
+          // Get game room information from server
+          GameState.roomWidth = gameMap["height"];
+          GameState.roomHeight = gameMap["width"];
+          this.numEdges = gameMap['numEdges']
+          this.numPoints = gameMap['numPoints']
+          this.numPolygons = gameMap['numPolygons']
+          this.allEdges = gameMap['allEdges']
+          this.allPoints = gameMap['allPoints']
+          this.allPolygons = gameMap['allPolygons']
+        }
       })
-      this.socketClient.on(Constants.MSG_TYPES.JOIN_GAME, (args: object) => {
+      this.socketClient.on(Constants.MSG_TYPES_JOIN_GAME, (args: object) => {
         console.log("JOIN GAME!");
-        console.log(args)
         this.circleX = args['x'];
         this.circleY = args['y'];
+        this.playerId = args['id'];
+        console.log(args)
 
-        // START GAME RIGHT AFTER FOR ONE PLAYER GAME
-        this.socketClient.emit(Constants.MSG_TYPES.START_GAME);
+        // Attempt to start a game once joined
+        this.socketClient.emit(Constants.MSG_TYPES_START_GAME);
       })
-      this.socketClient.on(Constants.MSG_TYPES.GAME_UPDATE, (players: {username: string, position: MapLocation, hp: number}[]) => {
-        // console.log("GAME UPDATE");
-        // console.log(players)
-        // console.log(players['players'])
-        // console.log(players['players'].length)
-        this.players = players['players'];
-      })
-      // TODO: This should be renamed to better describe movement input
-      this.socketClient.on(Constants.MSG_TYPES.INPUT, (data: any[]) => {
-        // console.log("GAME INPUT");
-        // console.log(data)
-        this.circleX = data[0]
-        this.circleY = data[1]
-        // console.log(players['players'])
-        // console.log(players['players'].length)
-        // this.players = players['players'];
+      this.socketClient.on(Constants.MSG_TYPES_GAME_UPDATE, (encodedPlayers: Uint16Array) => {
+        this.players = Encoder.decodeUpdate(encodedPlayers);
+
+        console.log(this.players)
+        
+        // Make sure we update each player correctly
+        let numPlayers = this.players.length;
+
+        // console.log(`${numPlayers} -> ${playerLocations}`)
+        for (let index = 0; index < numPlayers; ++index) {
+          const currentPlayer = this.players[index];
+          if (currentPlayer.id == this.playerId) {
+            this.circleX = currentPlayer['x']
+            this.circleY = currentPlayer['y']
+            this.flashlightDirection = currentPlayer['v']
+          } else {
+            this.hiddenX = currentPlayer['x'] // TODO: Modify to include more than 2 players
+            this.hiddenY = currentPlayer['y']
+            this.hiddenDirection = currentPlayer['v']
+          }
+        }
+        
       })
       // this.load.setBaseURL('http://labs.phaser.io')
       // this.load.image('sky', 'assets/skies/space3.png')
@@ -117,15 +149,15 @@ export class GameState extends Phaser.Scene {
     this.graphics = this.add.graphics({ x: 0, y: 0, lineStyle: { width: 4, color: 0xaa00aa } });
 
     // Setup controls for user
-    this.keyUP = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.UP);
-    this.keyDOWN = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN);
-    this.keyLEFT = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT);
-    this.keyRIGHT = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT);
+    this.keyUP = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
+    this.keyDOWN = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S);
+    this.keyLEFT = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
+    this.keyRIGHT = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
+
+    this.mouse = this.input.mousePointer;
     
-    this.keyQ = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Q);
-    this.keyW = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
-    this.keyA = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
-    this.keyS = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S);
+    this.keyExpandLight = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Q);
+    this.keyRestrictLight = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
 
     // Camera settings
     this.cameras.main.setBounds(0, 0, GameState.roomWidth + 90, GameState.roomWidth);
@@ -146,55 +178,176 @@ export class GameState extends Phaser.Scene {
   }
 
   handlePlayerKeyboardInput() {
-    let nextPointX = this.circleX;
-    let nextPointY = this.circleY;
-
-    if (this.keyUP.isDown)
-    {
-      nextPointY -= 3
-    }
-    if (this.keyDOWN.isDown)
-    {
-      nextPointY += 3
-    }
-    if (this.keyLEFT.isDown)
-    {
-      nextPointX -= 3
-    }
-    if (this.keyRIGHT.isDown)
-    {
-      nextPointX += 3
-    }
-
-    if (this.keyQ.isDown)
+    if (this.keyExpandLight.isDown)
     {
       this.flashlightAngle += 1 * Math.PI/180
     }
-    if (this.keyW.isDown)
+    if (this.keyRestrictLight.isDown)
     {
       this.flashlightAngle -= 1 * Math.PI/180
     }
 
-    if (this.keyA.isDown)
-    {
-      this.flashlightDirection += 1 * Math.PI/180
-    }
-    if (this.keyS.isDown)
-    {
-      this.flashlightDirection -= 1 * Math.PI/180
-    }
+    // Light direction is managed by mouse position
+    // if (this.keyLightClockwise.isDown)
+    // {
+    //   this.flashlightDirection += 1 * Math.PI/180
+    // }
+    // if (this.keyLightCounterclockwise.isDown)
+    // {
+    //   this.flashlightDirection -= 1 * Math.PI/180
+    // }
 
-    if (nextPointX == this.circleX && nextPointY == this.circleY) {
+    // var test: Uint16Array = [this.mouse.x, this.mouse.y];
+
+    // const location: MapLocation = new MapLocation(nextPointX, nextPointY);
+    // !(this.mouse.prevPosition.x == this.mouse.x && this.mouse.prevPosition.y == this.mouse.y) 
+    // console.log(`${this.previousMouseX}, ${this.mouse.position.x}`)
+
+    // Mouse.previousposition sometimes does not update every frame
+    if ((this.keyUP.isUp && this.keyDOWN.isUp && this.keyLEFT.isUp && this.keyRIGHT.isUp) && (this.previousMouseX == this.mouse.position.x && this.previousMouseY == this.mouse.position.y)) {
       return
     }
 
-    const location: MapLocation = new MapLocation(nextPointX, nextPointY);
-    this.socketClient.emit(Constants.MSG_TYPES.INPUT, location);
+    // console.log(`EMITTED INPUT -> ${this.previousMouseX}, ${this.mouse.position.x}`)
+
+    this.previousMouseX = this.mouse.x;
+    this.previousMouseY = this.mouse.y;
+    this.socketClient.emit(Constants.MSG_TYPES_INPUT,
+        Encoder.encodeInput(this.mouse.x, 
+          this.mouse.y, 
+          this.keyUP.isDown, 
+          this.keyDOWN.isDown, 
+          this.keyLEFT.isDown, 
+          this.keyRIGHT.isDown)
+      );
   }
 
   // Whether the hidden player was caught in the light the last frame
   was_hidden_player_caught: boolean = false;
   hidden_player_health: number = 100; // How many health points the hidden player has to survive against the light
+
+  calculateRayPolygon(circleX: number, circleY: number, flashlightDirection: number, flashlightAngle: number, isFlashlight: boolean) {
+
+    let lowerRayBounds = this.boundAngle(flashlightDirection - flashlightAngle/2);
+    let upperRayBounds = this.boundAngle(flashlightDirection + flashlightAngle/2);
+
+    let rayAngleQueue = priorityQueue<{angle, x, y}>()
+  
+    // If it is a flashlight, then add the boundary lines first
+    if (isFlashlight) {
+      let lowerX = circleX + Math.cos(lowerRayBounds) * 50
+      let lowerY = circleY + Math.sin(lowerRayBounds) * 50
+      let upperX = circleX + Math.cos(upperRayBounds) * 50
+      let upperY = circleY + Math.sin(upperRayBounds) * 50
+    
+      rayAngleQueue.insert({angle: lowerRayBounds, x: lowerX, y: lowerY}, lowerRayBounds);
+      rayAngleQueue.insert({angle: upperRayBounds, x: upperX, y: upperY}, upperRayBounds);
+    }
+    
+    // Generate all the rays needed for the game
+    for (let outerIndex = 0; outerIndex < this.numPoints; ++outerIndex) {  
+      const currentPoint: MapLocation = this.allPoints[outerIndex];
+      const diffX: number = currentPoint.x - circleX;
+      const diffY: number = currentPoint.y - circleY;
+      const rayAngle: number = Math.atan2(diffY, diffX); // Used for priority queue when added later
+    
+      let beforeAngle = this.boundAngle(rayAngle - 0.00001);
+      let afterAngle = this.boundAngle(rayAngle + 0.00001);
+    
+      const normalBounds = (lowerRayBounds < rayAngle && upperRayBounds > rayAngle)
+      // Happens when lower/upper bounds surpass the +-Math.PI mark
+      const reversedBounds = (lowerRayBounds > upperRayBounds) && ((-Math.PI < rayAngle && upperRayBounds > rayAngle) || (lowerRayBounds < rayAngle && Math.PI > rayAngle))
+      if (!isFlashlight || reversedBounds || normalBounds) {
+        rayAngleQueue.insert({angle: beforeAngle, x: currentPoint.x, y: currentPoint.y}, beforeAngle);
+        rayAngleQueue.insert({angle: rayAngle, x: currentPoint.x, y: currentPoint.y}, rayAngle);
+        rayAngleQueue.insert({angle: afterAngle, x: currentPoint.x, y: currentPoint.y}, afterAngle);
+      }
+    }
+    // This will store the point priority of the light polygon we will create
+    let visionQueue = priorityQueue<Point>()
+    let rayAngleLength = rayAngleQueue.size()
+
+    // Ray tracing to each point
+    for (let outerIndex = 0; outerIndex < rayAngleLength; ++outerIndex) {
+      const {angle, x, y} = rayAngleQueue.pop();
+      const rayAngle = angle
+
+      const raySlope = Math.tan(rayAngle);
+      const rayYIntercept: number = -(raySlope)*circleX + circleY
+
+      let currentCollisionDistance = 100000000000 // TODO: Change to max numrical value?
+      let bestCollisionSoFar = {x:-1, y:-1}
+
+      // console.log(`LINE FOUND -> (${circleX},${circleY}, ${currentPoint.x}, ${currentPoint.y}) => (${rayAngle}, ${raySlope} ${rayYIntercept})`)
+      // const line: Phaser.Geom.Line = new Phaser.Geom.Line(circleX, circleY, x, y); //Used for debugging
+      // graphics.strokeLineShape(line);
+
+      // console.log(`START 4 WITH (${x}, ${y}) with ray angle ${rayAngle * 180/Math.PI} and slope ${raySlope}`)
+      for (let innerIndex = 0; innerIndex < this.numEdges; ++innerIndex) {
+        // console.log("EDGE " + edgeIndex + " of " + numEdges)
+        const currentEdge: Line = this.allEdges[innerIndex];
+        let collisionX: number;
+        let collisionY: number;
+        // Handles verticle polygon lines
+        // NOTE: Vertical `raySlope` is handled as a very large number, but not infinity
+        // NOTE: Infinity values cannot be sent over socketio, thus we account 'null' values in replacement of Infinity
+        // TODO: We can fix the above note to make more sense.
+        if (currentEdge.slope == null || currentEdge.slope == Infinity || currentEdge.slope == -Infinity) {
+          collisionX = currentEdge.minX;
+          collisionY = raySlope*collisionX + rayYIntercept;
+        } else {
+          collisionX = (rayYIntercept - currentEdge.b) / (currentEdge.slope - raySlope);
+          collisionY = currentEdge.slope*collisionX + currentEdge.b;
+        }
+        // console.log("CURRENT RAY: " + currentEdge.slope)
+        // const collisionX: number = (rayYIntercept - currentEdge.b) / (currentEdge.slope - raySlope);
+        // const collisionY: number = currentEdge.slope*collisionX + currentEdge.b;
+
+        // console.log(`COLLISION FOUND -> (${collisionX},${collisionY}) for bounds (${currentEdge.x1}, ${currentEdge.y1}) and (${currentEdge.x2}, ${currentEdge.y2}) => (${rayAngle * 180/Math.PI}, ${rayYIntercept})`)
+        // console.log(`COLLISION FOUND -> (${collisionX},${collisionY}) for bounds (${currentEdge.minX}, ${currentEdge.maxX}) and (${currentEdge.minY}, ${currentEdge.maxY})`)
+        
+        // Need a good enough buffer for floating point errors           
+        if (collisionX <= currentEdge.maxX + 0.00001 && collisionX >= currentEdge.minX - 0.00001 && 
+            collisionY <= currentEdge.maxY + 0.00001 && collisionY >= currentEdge.minY - 0.00001) {
+              // Also check if angle to circle is the same
+              const distanceToLightOrigin = Math.sqrt(Math.pow(collisionX - circleX, 2) + Math.pow(collisionY - circleY, 2))
+              const angleToLight = Math.atan2(collisionY - circleY, collisionX - circleX)
+
+              if (distanceToLightOrigin < currentCollisionDistance && //Check it is closer
+                ((angleToLight < rayAngle + 0.001 && angleToLight > rayAngle - 0.001))) { //Check it is in the direction of the ray (including if ray angles jump from 0 to 360 or visa versa)
+                  bestCollisionSoFar = {x:collisionX, y:collisionY}
+                  currentCollisionDistance = distanceToLightOrigin
+              }
+        }
+
+        // TODO: Circumstance for when collisions are equal to line edge
+      }
+
+      // Add light collision point to priority queue (Dont need priority queue here)
+      visionQueue.insert(bestCollisionSoFar, rayAngle);
+    }
+
+    // Add circle to light polygon, if it is a flashlight
+    if (isFlashlight) {
+      let joinAngle = this.boundAngle(flashlightDirection + Math.PI);
+      visionQueue.insert({x:circleX, y:circleY}, joinAngle);
+    }
+
+    // Generate the polygon
+    let finalPointOrder: number[] = []
+    while (visionQueue.peek() != null) {
+      const nextPoint = visionQueue.pop()
+      const pointX = nextPoint.x
+      const pointY = nextPoint.y
+      finalPointOrder.push(pointX, pointY)
+      // console.log(`BEST: (${pointX},${pointY})`)
+      // const circle2: Phaser.Geom.Circle = new Phaser.Geom.Circle(pointX, pointY, 5);
+      // graphics.fillStyle(0x000000)
+      // graphics.fillCircleShape(circle2);
+    }
+
+    return finalPointOrder;
+  }
   
   // Is called on every frame
   update() {
@@ -212,8 +365,13 @@ export class GameState extends Phaser.Scene {
       this.flashlightAngle = 0
     }
 
-    let lowerRayBounds = this.boundAngle(this.flashlightDirection - this.flashlightAngle/2);
-    let upperRayBounds = this.boundAngle(this.flashlightDirection + this.flashlightAngle/2);
+    // Contrain flashlight bounds to unit circle angles
+    if (this.hiddenAngle > 2*Math.PI) {
+      this.hiddenAngle = 2*Math.PI
+    }
+    if (this.hiddenAngle < 0) {
+      this.hiddenAngle = 0
+    }
   
     // TODO: Not sure if this can be optimized as an image
     for (let index = 0; index < this.numPolygons; ++index) {
@@ -230,143 +388,57 @@ export class GameState extends Phaser.Scene {
       // console.log(this.players.length)
       for (const player of this.players) {
         // console.log("CHECKING PLAYER")
-        if (player.username == this.circleUsername) {
-          // console.log("MAIN PLAYER")
-          this.circle.setTo(player.position.x, player.position.y, 5);
+        if (player.id == this.playerId) {
+          this.circle.setTo(player.x, player.y, 5);
         } else {
-          // console.log("OTHER PLAYER")
-          this.hiddenCircle.setTo(player.position.x, player.position.y, 5);
-          this.hiddenX = player.position.x // TODO: Modify to include more than 2 players
-          this.hiddenY = player.position.y
+          // TODO: Modify to include more than 2 players
+          this.hiddenCircle.setTo(player.x, player.y, 5);
         }
       }
     }
-  
+
+    const lightPointOrder = this.calculateRayPolygon(this.circleX, this.circleY, this.flashlightDirection, this.flashlightAngle, this.isFlashlight)
+    const hiddenPointOrder = this.calculateRayPolygon(this.hiddenX, this.hiddenY, this.hiddenDirection, this.hiddenAngle, this.hiddenIsFlashlight) // TODO: light player is opposite of current players
+
   // Creating the circle 
   
   // Hidden player circle 
   // this.hiddenCircle.setTo(this.hiddenX, this.hiddenY, 5);
   
-  let rayAngleQueue = priorityQueue<{angle, x, y}>()
-  
-  // If it is a flashlight, then add the boundary lines first
-  if (this.isFlashlight) {
-    let lowerX = this.circleX + Math.cos(lowerRayBounds) * 50
-    let lowerY = this.circleY + Math.sin(lowerRayBounds) * 50
-    let upperX = this.circleX + Math.cos(upperRayBounds) * 50
-    let upperY = this.circleY + Math.sin(upperRayBounds) * 50
-  
-    rayAngleQueue.insert({angle: lowerRayBounds, x: lowerX, y: lowerY}, lowerRayBounds);
-    rayAngleQueue.insert({angle: upperRayBounds, x: upperX, y: upperY}, upperRayBounds);
-  }
-  
-  // Generate all the rays needed for the game
-  for (let outerIndex = 0; outerIndex < this.numPoints; ++outerIndex) {  
-    const currentPoint: MapLocation = this.allPoints[outerIndex];
-    const diffX: number = currentPoint.x - this.circleX;
-    const diffY: number = currentPoint.y - this.circleY;
-    const rayAngle: number = Math.atan2(diffY, diffX); // Used for priority queue when added later
-  
-    let beforeAngle = this.boundAngle(rayAngle - 0.00001);
-    let afterAngle = this.boundAngle(rayAngle + 0.00001);
-  
-    const normalBounds = (lowerRayBounds < rayAngle && upperRayBounds > rayAngle)
-    // Happens when lower/upper bounds surpass the +-Math.PI mark
-    const reversedBounds = (lowerRayBounds > upperRayBounds) && ((-Math.PI < rayAngle && upperRayBounds > rayAngle) || (lowerRayBounds < rayAngle && Math.PI > rayAngle))
-    if (!this.isFlashlight || reversedBounds || normalBounds) {
-      rayAngleQueue.insert({angle: beforeAngle, x: currentPoint.x, y: currentPoint.y}, beforeAngle);
-      rayAngleQueue.insert({angle: rayAngle, x: currentPoint.x, y: currentPoint.y}, rayAngle);
-      rayAngleQueue.insert({angle: afterAngle, x: currentPoint.x, y: currentPoint.y}, afterAngle);
-    }
-  }
-  // This will store the point priority of the light polygon we will create
-  let queue = priorityQueue<Point>()
-  let rayAngleLength = rayAngleQueue.size()
-  
-  // Ray tracing to each point
-  for (let outerIndex = 0; outerIndex < rayAngleLength; ++outerIndex) {
-    const {angle, x, y} = rayAngleQueue.pop();
-    const rayAngle = angle
-  
-    const raySlope = Math.tan(rayAngle);
-    const rayYIntercept: number = -(raySlope)*this.circleX + this.circleY
-  
-    let currentCollisionDistance = 100000000000 // TODO: Change to max numrical value?
-    let bestCollisionSoFar = {x:-1, y:-1}
-  
-    // console.log(`LINE FOUND -> (${circleX},${circleY}, ${currentPoint.x}, ${currentPoint.y}) => (${rayAngle}, ${raySlope} ${rayYIntercept})`)
-    // const line: Phaser.Geom.Line = new Phaser.Geom.Line(circleX, circleY, x, y); //Used for debugging
-    // graphics.strokeLineShape(line);
-  
-    // console.log(`START 4 WITH (${x}, ${y}) with ray angle ${rayAngle * 180/Math.PI} and slope ${raySlope}`)
-    for (let innerIndex = 0; innerIndex < this.numEdges; ++innerIndex) {
-      // console.log("EDGE " + edgeIndex + " of " + numEdges)
-      const currentEdge: Line = this.allEdges[innerIndex];
-      let collisionX: number;
-      let collisionY: number;
-      // Handles verticle polygon lines
-      // NOTE: Vertical `raySlope` is handled as a very large number, but not infinity
-      // NOTE: Infinity values cannot be sent over socketio, thus we account 'null' values in replacement of Infinity
-      // TODO: We can fix the above note to make more sense.
-      if (currentEdge.slope == null || currentEdge.slope == Infinity || currentEdge.slope == -Infinity) {
-        collisionX = currentEdge.minX;
-        collisionY = raySlope*collisionX + rayYIntercept;
-      } else {
-        collisionX = (rayYIntercept - currentEdge.b) / (currentEdge.slope - raySlope);
-        collisionY = currentEdge.slope*collisionX + currentEdge.b;
-      }
-      // console.log("CURRENT RAY: " + currentEdge.slope)
-      // const collisionX: number = (rayYIntercept - currentEdge.b) / (currentEdge.slope - raySlope);
-      // const collisionY: number = currentEdge.slope*collisionX + currentEdge.b;
-  
-      // console.log(`COLLISION FOUND -> (${collisionX},${collisionY}) for bounds (${currentEdge.x1}, ${currentEdge.y1}) and (${currentEdge.x2}, ${currentEdge.y2}) => (${rayAngle * 180/Math.PI}, ${rayYIntercept})`)
-      // console.log(`COLLISION FOUND -> (${collisionX},${collisionY}) for bounds (${currentEdge.minX}, ${currentEdge.maxX}) and (${currentEdge.minY}, ${currentEdge.maxY})`)
-      
-      // Need a good enough buffer for floating point errors           
-      if (collisionX <= currentEdge.maxX + 0.00001 && collisionX >= currentEdge.minX - 0.00001 && 
-          collisionY <= currentEdge.maxY + 0.00001 && collisionY >= currentEdge.minY - 0.00001) {
-            // Also check if angle to circle is the same
-            const distanceToLightOrigin = Math.sqrt(Math.pow(collisionX - this.circleX, 2) + Math.pow(collisionY - this.circleY, 2))
-            const angleToLight = Math.atan2(collisionY - this.circleY, collisionX - this.circleX)
+  this.light_polygon.setTo(lightPointOrder);
+  this.hidden_polygon.setTo(hiddenPointOrder);
 
-            if (distanceToLightOrigin < currentCollisionDistance && //Check it is closer
-              ((angleToLight < rayAngle + 0.001 && angleToLight > rayAngle - 0.001))) { //Check it is in the direction of the ray (including if ray angles jump from 0 to 360 or visa versa)
-                bestCollisionSoFar = {x:collisionX, y:collisionY}
-                currentCollisionDistance = distanceToLightOrigin
-            }
-      }
-  
-      // TODO: Circumstance for when collisions are equal to line edge
-    }
-  
-    // Add light collision point to priority queue (Dont need priority queue here)
-    queue.insert(bestCollisionSoFar, rayAngle);
+  // console.log(`NOTES: (${this.circleX}, ${this.circleY}, ${this.flashlightDirection}, ${this.flashlightDirection}, ${this.isLightPlayer})`)
+  // console.log(`NOTES: ${this.flashlightDirection * 180/Math.PI}, ${this.hiddenDirection * 180/Math.PI}`)
+  // console.log(this.light_polygon.points)
+  // console.log(this.hidden_polygon.points)
+
+  // If light player, the light will be yellow
+  // If dark player, the "light" will be black
+  if (this.isLightPlayer) {
+    this.graphics.fillStyle(0xffff00)
+  } else {
+    this.graphics.fillStyle(0x0a0a0a)
   }
-  
-  // Add circle to light polygon, if it is a flashlight
-  if (this.isFlashlight) {
-    let joinAngle = this.boundAngle(this.flashlightDirection + Math.PI);
-    queue.insert({x:this.circleX, y:this.circleY}, joinAngle);
+  // TODO: Not sure why there is a bug that the polygon points are not more than 2 points (maybe the polygon points are undefined)
+  if (this.light_polygon.points.length > 2) {
+    this.graphics.fillPoints(this.light_polygon.points, true);
   }
-  
-  // Generate the polygon
-  let finalPointOrder: number[] = []
-  while (queue.peek() != null) {
-    const nextPoint = queue.pop()
-    const pointX = nextPoint.x
-    const pointY = nextPoint.y
-    finalPointOrder.push(pointX, pointY)
-    // console.log(`BEST: (${pointX},${pointY})`)
-    // const circle2: Phaser.Geom.Circle = new Phaser.Geom.Circle(pointX, pointY, 5);
-    // graphics.fillStyle(0x000000)
-    // graphics.fillCircleShape(circle2);
+
+
+  // Flips the previous one
+  if (this.isLightPlayer) {
+    this.graphics.fillStyle(0x0a0a0a)
+  } else {
+    this.graphics.fillStyle(0xffff00)
   }
-  
-  this.light_polygon.setTo(finalPointOrder);
-  this.graphics.fillStyle(0xffff00)
-  this.graphics.fillPoints(this.light_polygon.points, true);
+  // TODO: Not sure why there is a bug that the polygon points are not more than 2 points (maybe the polygon points are undefined)
+  if (this.hidden_polygon.points.length > 2) {
+    this.graphics.fillPoints(this.hidden_polygon.points, true);
+  }
   
   // Draw both players
+  // console.log(`CIRCLEX: ${this.circle.x}`)
   this.graphics.fillStyle(0xff0000)
   this.graphics.fillCircleShape(this.circle);
 

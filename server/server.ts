@@ -2,7 +2,8 @@ import express  from "express";
 // const webpack = require('webpack');
 // const webpackDevMiddleware = require('webpack-dev-middleware');
 const socketio = require('socket.io');
-const Constants = require('../shared/constants');
+import { Constants } from '../shared/constants';
+import * as Encoder from '../shared/encoder';
 // const webpackConfig = require('../../webpack.dev.js');
 
 import { Socket } from 'socket.io';
@@ -40,9 +41,9 @@ const game: Game = new Game();
 io.on('connection', (socket: Socket) => {
   console.log('Player connected!', socket.id);
 
-  socket.on(Constants.MSG_TYPES.JOIN_GAME, (username: string) => game.addPlayer(socket, username));
-  socket.on(Constants.MSG_TYPES.START_GAME, (params: any) => game.start(socket, params));
-  socket.on(Constants.MSG_TYPES.INPUT, (nextPosition: MapLocation) => game.handleMovementInput(socket, nextPosition));
+  socket.on(Constants.MSG_TYPES_JOIN_GAME, (username: string) => game.addPlayer(socket, username));
+  socket.on(Constants.MSG_TYPES_START_GAME, (params: any) => game.start(socket, params));
+  socket.on(Constants.MSG_TYPES_INPUT, (encodedMessage: Uint16Array) => game.handleMovementInput(socket, encodedMessage));
   socket.on('disconnect', () => game.players.delete(socket.id));
 });
 

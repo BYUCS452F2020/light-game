@@ -1,36 +1,44 @@
-const encodeUpdate = (players) => {
-    arr = new new Uint16Array();
-    arr[0] = players.length
-    for (let i = 1; i < players.length * 3; i = i + 3) {
-        const player = players[i]
-        arr[i] = player.id
-        arr[i + 1] = player.x
-        arr[i + 3] = player.y
+"use strict";
+exports.__esModule = true;
+exports.decodeInput = exports.encodeInput = exports.decodeUpdate = exports.encodeUpdate = void 0;
+exports.encodeUpdate = function (players) {
+    var playersLength = players.size;
+    var arr = new Uint16Array(1 + playersLength * 4);
+    arr[0] = playersLength;
+    var i = 1;
+    players.forEach(function (value, key) {
+        arr[i] = value.id;
+        arr[i + 1] = value.position.x;
+        arr[i + 2] = value.position.y;
+        arr[i + 3] = value.visionDirection * 180 / Math.PI + 180;
+        i = i + 4;
+    });
+    return arr;
+};
+exports.decodeUpdate = function (encodedArr) {
+    var players = [];
+    var numPlayers = encodedArr[0];
+    var playerNumber = 0;
+    for (var i = 1; playerNumber < numPlayers; i += 4, playerNumber += 1) {
+        var player = {};
+        player['id'] = encodedArr[i];
+        player['x'] = encodedArr[i + 1];
+        player['y'] = encodedArr[i + 2];
+        player['v'] = (encodedArr[i + 3] - 180)* Math.PI / 180;
+        players.push(player);
     }
-    return arr
-}
-const decodeUpdate = (encodedArr) => {
-    players = []
-    for (let i = 1; i < encodedArr[0]; i += 3) {
-        let player = {}
-        player.id = encodedArr[i]
-        player.x = encodedArr[i+1]
-        player.y = encodedArr[i+2]
-        players.push(player)
-    }
-    return players
-    
-
-}
-
-const encodeInput = (mouseX, mouseY, key) => {
-    arr = new new Uint16Array();
-    arr[0] = mouseX
-    arr[1] = mouseY
-    arr[2] = key
-
-}
-
-const decodeInput = (arr) => {
-    return {mouseX: arr[0], mouseY: arr[1], key: arr[2]}
-}
+    return players;
+};
+exports.encodeInput = function (mouseX, mouseY, keyUP, keyDOWN, keyLEFT, keyRIGHT) {
+    var arr = new Uint16Array(6);
+    arr[0] = mouseX;
+    arr[1] = mouseY;
+    arr[2] = keyUP ? 1 : 0;
+    arr[3] = keyDOWN ? 1 : 0;
+    arr[4] = keyLEFT ? 1 : 0;
+    arr[5] = keyRIGHT ? 1 : 0;
+    return arr;
+};
+exports.decodeInput = function (arr) {
+    return { mouseX: arr[0], mouseY: arr[1], keyUP: arr[2], keyDOWN: arr[3], keyLEFT: arr[4], keyRIGHT: arr[5] };
+};

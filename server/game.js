@@ -1,7 +1,27 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 exports.__esModule = true;
+var Encoder = __importStar(require("../shared/encoder"));
 var domain_1 = require("./domain");
-var Constants = require('../shared/constants.js');
+var constants_1 = require("../shared/constants");
 var Game = (function () {
     function Game() {
         this.players = new Map();
@@ -12,23 +32,21 @@ var Game = (function () {
     Game.prototype.generatePlayerArray = function () {
         var playerArray = [];
         this.players.forEach(function (value, key) {
-            playerArray.push({ username: value.username, position: value.position, hp: value.hp });
+            playerArray.push({ username: value.username, id: value.id, position: value.position, hp: value.hp });
         });
         return playerArray;
     };
     Game.prototype.start = function (socket, params) {
         var _this = this;
-        var _a = Array.from(this.players)[domain_1.getRandomInt(this.players.size)], id = _a[0], lightPlayer = _a[1];
-        lightPlayer = new domain_1.LightPlayer(lightPlayer);
-        this.players.set(id, lightPlayer);
-        console.log("STARTING GAME!");
+        var isGameReadyToStart = (this.players ? this.players.size > 1 : false) && this.map.isGameMapGenerated;
+        var _a = Array.from(this.players)[domain_1.getRandomInt(this.players.size)], _ = _a[0], lightPlayer = _a[1];
         var jsonMap = JSON.stringify(this.map);
         this.players.forEach(function (player) {
-            if (_this.map.isGameMapGenerated) {
-                socket.emit(Constants.MSG_TYPES.START_GAME, { isGameMapGenerated: _this.map.isGameMapGenerated, map: jsonMap, players: _this.generatePlayerArray() });
+            if (isGameReadyToStart) {
+                player.socket.emit(constants_1.Constants.MSG_TYPES_START_GAME, { isStarted: isGameReadyToStart, map: jsonMap, players: _this.generatePlayerArray(), lightPlayerIds: "[" + lightPlayer.id + ", -1]" });
             }
             else {
-                socket.emit(Constants.MSG_TYPES.START_GAME, { isGameMapGenerated: _this.map.isGameMapGenerated });
+                player.socket.emit(constants_1.Constants.MSG_TYPES_START_GAME, { isStarted: isGameReadyToStart });
             }
         });
     };
@@ -37,8 +55,10 @@ var Game = (function () {
         var y = this.map.height * (0.25 + Math.random() * 0.5);
         console.log("ADDING PLAYER!");
         console.log(x, y);
-        this.players.set(socket.id, new domain_1.Player(username, socket, new domain_1.MapLocation(x, y)));
-        socket.emit(Constants.MSG_TYPES.JOIN_GAME, { x: x, y: y });
+        var uniquePlayerId = this.players.size;
+        var newPlayer = new domain_1.Player(username, uniquePlayerId, socket, new domain_1.MapLocation(x, y), 90 * Math.PI / 180);
+        this.players.set(socket.id, newPlayer);
+        socket.emit(constants_1.Constants.MSG_TYPES_JOIN_GAME, { x: x, y: y, id: uniquePlayerId });
     };
     Game.prototype.boundAngle = function (angle) {
         angle %= (2 * Math.PI);
@@ -112,15 +132,31 @@ var Game = (function () {
         }
         return [currentX, currentY];
     };
-    Game.prototype.handleMovementInput = function (socket, nextPosition) {
+    Game.prototype.handleMovementInput = function (socket, encodedMessage) {
         var player = this.players.get(socket.id);
         if (!player) {
-            throw new Error();
+            return;
         }
-        var nextPointX = nextPosition.x;
-        var nextPointY = nextPosition.y;
+        var playerInput = Encoder.decodeInput(encodedMessage);
+        var nextPointX = player.position.x;
+        var nextPointY = player.position.y;
+        if (playerInput.keyUP) {
+            nextPointY -= 3;
+        }
+        if (playerInput.keyDOWN) {
+            nextPointY += 3;
+        }
+        if (playerInput.keyLEFT) {
+            nextPointX -= 3;
+        }
+        if (playerInput.keyRIGHT) {
+            nextPointX += 3;
+        }
+        var diffX = playerInput.mouseX - player.position.x;
+        var diffY = playerInput.mouseY - player.position.y;
+        player.visionDirection = Math.atan2(diffY, diffX);
+        console.log(socket.id + " -> " + diffX + ", " + diffY + ", " + player.visionDirection * 180 / Math.PI);
         var returnValue = this.handleMovement(player.position.x, player.position.y, nextPointX, nextPointY);
-        socket.emit(Constants.MSG_TYPES.INPUT, [returnValue[0], returnValue[1]]);
         player.position.x = returnValue[0];
         player.position.y = returnValue[1];
     };
@@ -133,12 +169,13 @@ var Game = (function () {
         this.lastUpdateTime = now;
         this.players.forEach(function (player, id) {
             if (player.hp <= 0) {
-                player.socket.emit(Constants.MSG_TYPES.GAME_OVER);
+                player.socket.emit(constants_1.Constants.MSG_TYPES_GAME_OVER);
                 _this.players["delete"](id);
             }
         });
+        var playerArray = Encoder.encodeUpdate(this.players);
         this.players.forEach(function (player) {
-            player.socket.emit(Constants.MSG_TYPES.GAME_UPDATE, { players: _this.generatePlayerArray() });
+            player.socket.emit(constants_1.Constants.MSG_TYPES_GAME_UPDATE, playerArray);
         });
     };
     return Game;
