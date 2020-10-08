@@ -130,11 +130,13 @@ export class GameState extends Phaser.Scene {
           if (currentPlayer.id == this.playerId) {
             this.circleX = currentPlayer['x']
             this.circleY = currentPlayer['y']
-            this.flashlightDirection = currentPlayer['v']
+            this.flashlightDirection = currentPlayer['d']
+            this.flashlightAngle = currentPlayer['a']
           } else {
             this.hiddenX = currentPlayer['x'] // TODO: Modify to include more than 2 players
             this.hiddenY = currentPlayer['y']
-            this.hiddenDirection = currentPlayer['v']
+            this.hiddenDirection = currentPlayer['d']
+            this.hiddenAngle = currentPlayer['a']
           }
         }
         
@@ -178,14 +180,6 @@ export class GameState extends Phaser.Scene {
   }
 
   handlePlayerKeyboardInput() {
-    if (this.keyExpandLight.isDown)
-    {
-      this.flashlightAngle += 1 * Math.PI/180
-    }
-    if (this.keyRestrictLight.isDown)
-    {
-      this.flashlightAngle -= 1 * Math.PI/180
-    }
 
     // Light direction is managed by mouse position
     // if (this.keyLightClockwise.isDown)
@@ -204,7 +198,8 @@ export class GameState extends Phaser.Scene {
     // console.log(`${this.previousMouseX}, ${this.mouse.position.x}`)
 
     // Mouse.previousposition sometimes does not update every frame
-    if ((this.keyUP.isUp && this.keyDOWN.isUp && this.keyLEFT.isUp && this.keyRIGHT.isUp) && (this.previousMouseX == this.mouse.position.x && this.previousMouseY == this.mouse.position.y)) {
+    if ((this.keyUP.isUp && this.keyDOWN.isUp && this.keyLEFT.isUp && this.keyRIGHT.isUp && this.keyExpandLight.isUp && this.keyRestrictLight.isUp)
+     && (this.previousMouseX == this.mouse.position.x && this.previousMouseY == this.mouse.position.y)) {
       return
     }
 
@@ -218,7 +213,9 @@ export class GameState extends Phaser.Scene {
           this.keyUP.isDown, 
           this.keyDOWN.isDown, 
           this.keyLEFT.isDown, 
-          this.keyRIGHT.isDown)
+          this.keyRIGHT.isDown,
+          this.keyExpandLight.isDown,
+          this.keyRestrictLight.isDown)
       );
   }
 

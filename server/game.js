@@ -56,7 +56,7 @@ var Game = (function () {
         console.log("ADDING PLAYER!");
         console.log(x, y);
         var uniquePlayerId = this.players.size;
-        var newPlayer = new domain_1.Player(username, uniquePlayerId, socket, new domain_1.MapLocation(x, y), 90 * Math.PI / 180);
+        var newPlayer = new domain_1.Player(username, uniquePlayerId, socket, new domain_1.MapLocation(x, y), 90 * Math.PI / 180, 90 * Math.PI / 180);
         this.players.set(socket.id, newPlayer);
         socket.emit(constants_1.Constants.MSG_TYPES_JOIN_GAME, { x: x, y: y, id: uniquePlayerId });
     };
@@ -151,6 +151,12 @@ var Game = (function () {
         }
         if (playerInput.keyRIGHT) {
             nextPointX += 3;
+        }
+        if (playerInput.keyExpandLight) {
+            player.visionAngle += 1 * Math.PI / 180;
+        }
+        if (playerInput.keyRestrictLight) {
+            player.visionAngle -= 1 * Math.PI / 180;
         }
         var diffX = playerInput.mouseX - player.position.x;
         var diffY = playerInput.mouseY - player.position.y;

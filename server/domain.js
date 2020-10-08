@@ -105,13 +105,14 @@ var GameMap = (function () {
 }());
 exports.GameMap = GameMap;
 var Player = (function () {
-    function Player(username, id, socket, position, visionDirection) {
+    function Player(username, id, socket, position, visionDirection, visionAngle) {
         this.position = position;
         this.id = id;
         this.username = username;
         this.hp = 100;
         this.socket = socket;
         this.visionDirection = visionDirection;
+        this.visionAngle = visionAngle;
     }
     return Player;
 }());
@@ -119,7 +120,7 @@ exports.Player = Player;
 var LightPlayer = (function (_super) {
     __extends(LightPlayer, _super);
     function LightPlayer(player) {
-        var _this = _super.call(this, player.username, player.id, player.socket, player.position, player.visionDirection) || this;
+        var _this = _super.call(this, player.username, player.id, player.socket, player.position, player.visionDirection, player.visionAngle) || this;
         _this.orientation = 0;
         _this.flashlight = new Flashlight();
         return _this;

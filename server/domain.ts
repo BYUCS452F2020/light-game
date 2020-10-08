@@ -149,13 +149,15 @@ export class Player {
     socket:Socket
     id:number
     visionDirection: number
-    constructor(username:string, id: number, socket:Socket, position:MapLocation, visionDirection: number) {
+    visionAngle: number
+    constructor(username:string, id: number, socket:Socket, position:MapLocation, visionDirection: number, visionAngle: number) {
         this.position = position
         this.id = id;
         this.username = username
         this.hp = 100
         this.socket = socket
         this.visionDirection = visionDirection
+        this.visionAngle = visionAngle
     }
 }
 
@@ -163,7 +165,7 @@ export class LightPlayer extends Player {
     orientation:number
     flashlight: Flashlight
     constructor(player:Player) {
-        super(player.username, player.id, player.socket, player.position, player.visionDirection)
+        super(player.username, player.id, player.socket, player.position, player.visionDirection, player.visionAngle)
         this.orientation = 0
         this.flashlight =  new Flashlight()
     }

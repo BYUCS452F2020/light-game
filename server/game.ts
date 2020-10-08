@@ -64,7 +64,7 @@ export default class Game {
 
     // TODO: If two people join at the same time, this could be a bug
     const uniquePlayerId = this.players.size
-    const newPlayer = new Player(username, uniquePlayerId, socket, new MapLocation(x, y), 90 * Math.PI/180)
+    const newPlayer = new Player(username, uniquePlayerId, socket, new MapLocation(x, y), 90 * Math.PI/180, 90 * Math.PI/180)
     this.players.set(socket.id, newPlayer)
     socket.emit(Constants.MSG_TYPES_JOIN_GAME, {x, y, id: uniquePlayerId})
   }
@@ -203,6 +203,16 @@ export default class Game {
     if (playerInput.keyRIGHT)
     {
       nextPointX += 3
+    }
+
+    // Control Flashlight angles
+    if (playerInput.keyExpandLight)
+    {
+      player.visionAngle += 1 * Math.PI/180
+    }
+    if (playerInput.keyRestrictLight)
+    {
+      player.visionAngle -= 1 * Math.PI/180
     }
 
     // Make player look at the mouse position
