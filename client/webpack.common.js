@@ -1,5 +1,6 @@
 const path = require('path');
 module.exports = {
+  mode: 'production',
   entry: './client/src/app.ts',
   module: {
     rules: [
@@ -14,7 +15,7 @@ module.exports = {
     extensions: [ '.ts', '.tsx', '.js' ]
   },
   output: {
-    path: path.resolve(__dirname, '../build/client'),
+    path: path.resolve(__dirname, './dist'),
     publicPath: '/',
     filename: 'bundle.js', //Creates in-memory bundle for "index.html" to pickup
 },

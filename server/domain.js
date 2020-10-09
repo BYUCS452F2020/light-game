@@ -1,21 +1,8 @@
 "use strict";
-var __extends = (this && this.__extends) || (function () {
-    var extendStatics = function (d, b) {
-        extendStatics = Object.setPrototypeOf ||
-            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
-        return extendStatics(d, b);
-    };
-    return function (d, b) {
-        extendStatics(d, b);
-        function __() { this.constructor = d; }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-    };
-})();
-exports.__esModule = true;
+Object.defineProperty(exports, "__esModule", { value: true });
 exports.Line = exports.getRandomInt = exports.MapLocation = exports.Obstacle = exports.LightPlayer = exports.Player = exports.GameMap = void 0;
-var GameMap = (function () {
-    function GameMap(nPlayers) {
+class GameMap {
+    constructor(nPlayers) {
         this.allPoints = [];
         this.allEdges = [];
         this.allPolygons = [];
@@ -27,35 +14,35 @@ var GameMap = (function () {
         this.width = 500;
         this.obstacles = [];
         this.levers = [];
-        var a1 = [new MapLocation(400, 100), new MapLocation(200, 278), new MapLocation(340, 430), new MapLocation(650, 80)];
-        var ob1 = new Obstacle(a1, 0x00aa0);
-        var a2 = [new MapLocation(0, 0), new MapLocation(this.width, 0), new MapLocation(this.width, this.height), new MapLocation(0, this.height)];
-        var ob2 = new Obstacle(a2, 0x0000aa);
-        var a3 = [new MapLocation(200, 200), new MapLocation(300, 278), new MapLocation(340, 430)];
-        var ob3 = new Obstacle(a3, 0xaaaa00);
+        const a1 = [new MapLocation(400, 100), new MapLocation(200, 278), new MapLocation(340, 430), new MapLocation(650, 80)];
+        const ob1 = new Obstacle(a1, 0x00aa0);
+        const a2 = [new MapLocation(0, 0), new MapLocation(this.width, 0), new MapLocation(this.width, this.height), new MapLocation(0, this.height)];
+        const ob2 = new Obstacle(a2, 0x0000aa);
+        const a3 = [new MapLocation(200, 200), new MapLocation(300, 278), new MapLocation(340, 430)];
+        const ob3 = new Obstacle(a3, 0xaaaa00);
         this.obstacles = [ob1, ob2, ob3];
-        var NUM_LEVERS = 3;
-        for (var i = 0; i < NUM_LEVERS; i++) {
+        const NUM_LEVERS = 3;
+        for (let i = 0; i < NUM_LEVERS; i++) {
             this.levers.push(new Lever(this.obstacles[getRandomInt(this.obstacles.length - 1)]));
         }
         this.getMapInformationCached();
     }
-    GameMap.prototype.getMapInformationCached = function () {
-        var mapPolygons = this.obstacles;
+    getMapInformationCached() {
+        const mapPolygons = this.obstacles;
         this.allPolygons = [];
         this.numPolygons = mapPolygons.length;
         this.allPoints = [];
-        for (var index = 0; index < mapPolygons.length; ++index) {
-            var currentPolygon = mapPolygons[index];
+        for (let index = 0; index < mapPolygons.length; ++index) {
+            const currentPolygon = mapPolygons[index];
             this.allPolygons.push({ polygon: currentPolygon, color: currentPolygon.color });
             this.allPoints = this.allPoints.concat(currentPolygon.points);
         }
         this.allEdges = [];
-        for (var polygonIndex = 0; polygonIndex < this.numPolygons; ++polygonIndex) {
-            var currentPolygon = this.allPolygons[polygonIndex].polygon;
-            var previousPoint = currentPolygon.points[0];
-            var currentPoint = void 0;
-            for (var index = 1; index <= currentPolygon.points.length; ++index) {
+        for (let polygonIndex = 0; polygonIndex < this.numPolygons; ++polygonIndex) {
+            const currentPolygon = this.allPolygons[polygonIndex].polygon;
+            let previousPoint = currentPolygon.points[0];
+            let currentPoint;
+            for (let index = 1; index <= currentPolygon.points.length; ++index) {
                 if (index == currentPolygon.points.length) {
                     currentPoint = currentPolygon.points[0];
                     this.allEdges.push(new Line(currentPoint.x, currentPoint.y, previousPoint.x, previousPoint.y));
@@ -69,18 +56,18 @@ var GameMap = (function () {
             }
         }
         this.numEdges = this.allEdges.length;
-        for (var edgeIndex = 0; edgeIndex < this.numEdges; ++edgeIndex) {
-            var outerEdge = this.allEdges[edgeIndex];
+        for (let edgeIndex = 0; edgeIndex < this.numEdges; ++edgeIndex) {
+            const outerEdge = this.allEdges[edgeIndex];
             outerEdge.x1;
-            var diffX = outerEdge.x1 - outerEdge.x2;
-            var diffY = outerEdge.y1 - outerEdge.y2;
-            var rayAngle = Math.atan2(diffY, diffX);
-            var raySlope = Math.tan(rayAngle);
-            var rayYIntercept = -(raySlope) * outerEdge.x2 + outerEdge.y2;
-            for (var innerIndex = edgeIndex + 1; innerIndex < this.numEdges; ++innerIndex) {
-                var currentEdge = this.allEdges[innerIndex];
-                var collisionX = void 0;
-                var collisionY = void 0;
+            const diffX = outerEdge.x1 - outerEdge.x2;
+            const diffY = outerEdge.y1 - outerEdge.y2;
+            const rayAngle = Math.atan2(diffY, diffX);
+            const raySlope = Math.tan(rayAngle);
+            const rayYIntercept = -(raySlope) * outerEdge.x2 + outerEdge.y2;
+            for (let innerIndex = edgeIndex + 1; innerIndex < this.numEdges; ++innerIndex) {
+                const currentEdge = this.allEdges[innerIndex];
+                let collisionX;
+                let collisionY;
                 if (currentEdge.slope == Infinity || currentEdge.slope == -Infinity) {
                     collisionX = currentEdge.minX;
                     collisionY = raySlope * collisionX + rayYIntercept;
@@ -100,12 +87,11 @@ var GameMap = (function () {
         }
         this.numPoints = this.allPoints.length;
         this.isGameMapGenerated = true;
-    };
-    return GameMap;
-}());
+    }
+}
 exports.GameMap = GameMap;
-var Player = (function () {
-    function Player(username, id, socket, position, visionDirection, visionAngle) {
+class Player {
+    constructor(username, id, socket, position, visionDirection, visionAngle) {
         this.position = position;
         this.id = id;
         this.username = username;
@@ -114,56 +100,48 @@ var Player = (function () {
         this.visionDirection = visionDirection;
         this.visionAngle = visionAngle;
     }
-    return Player;
-}());
+}
 exports.Player = Player;
-var LightPlayer = (function (_super) {
-    __extends(LightPlayer, _super);
-    function LightPlayer(player) {
-        var _this = _super.call(this, player.username, player.id, player.socket, player.position, player.visionDirection, player.visionAngle) || this;
-        _this.orientation = 0;
-        _this.flashlight = new Flashlight();
-        return _this;
+class LightPlayer extends Player {
+    constructor(player) {
+        super(player.username, player.id, player.socket, player.position, player.visionDirection, player.visionAngle);
+        this.orientation = 0;
+        this.flashlight = new Flashlight();
     }
-    return LightPlayer;
-}(Player));
+}
 exports.LightPlayer = LightPlayer;
-var Flashlight = (function () {
-    function Flashlight() {
+class Flashlight {
+    constructor() {
         this.fov = 40;
     }
-    return Flashlight;
-}());
-var Obstacle = (function () {
-    function Obstacle(points, color) {
+}
+class Obstacle {
+    constructor(points, color) {
         this.id = Math.floor(Math.random() * Math.floor(10000)).toString();
         this.points = points;
         this.color = color;
     }
-    return Obstacle;
-}());
+}
 exports.Obstacle = Obstacle;
-var MapLocation = (function () {
-    function MapLocation(x, y) {
+class MapLocation {
+    constructor(x, y) {
         this.x = x;
         this.y = y;
     }
-    return MapLocation;
-}());
+}
 exports.MapLocation = MapLocation;
-var Lever = (function () {
-    function Lever(obstacle) {
+class Lever {
+    constructor(obstacle) {
         this.polygonId = obstacle.id;
         this.side = Math.floor(Math.random() * obstacle.points.length);
     }
-    return Lever;
-}());
+}
 function getRandomInt(max) {
     return Math.floor(Math.random() * Math.floor(max));
 }
 exports.getRandomInt = getRandomInt;
-var Line = (function () {
-    function Line(x1, y1, x2, y2) {
+class Line {
+    constructor(x1, y1, x2, y2) {
         this.x1 = x1;
         this.y1 = y1;
         this.x2 = x2;
@@ -175,11 +153,10 @@ var Line = (function () {
         this.slope = (y2 - y1) / (x2 - x1);
         this.b = (-this.slope * x1 + y1);
     }
-    return Line;
-}());
+}
 exports.Line = Line;
-var Color = (function () {
-    function Color(r, g, b) {
+class Color {
+    constructor(r, g, b) {
         if (r)
             this.r = r;
         else
@@ -193,5 +170,4 @@ var Color = (function () {
         else
             b = getRandomInt(255);
     }
-    return Color;
-}());
+}

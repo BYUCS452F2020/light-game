@@ -1,54 +1,67 @@
-import express  from "express";
-// const webpack = require('webpack');
-// const webpackDevMiddleware = require('webpack-dev-middleware');
-const socketio = require('socket.io');
+import express, { Application } from "express";
+import path from 'path'
+import webpack from 'webpack';
+import webpackDevMiddleware from 'webpack-dev-middleware';
+import socketio from 'socket.io';
+
 import { Constants } from '../shared/constants';
 import * as Encoder from '../shared/encoder';
-// const webpackConfig = require('../../webpack.dev.js');
+import webpackConfig from '../client/webpack.common.js';
 
 import { Socket } from 'socket.io';
 import { MapLocation } from "./domain";
 import Game from './game';
+import { RoomManager } from "./roomManager";
 
 
-// Setup an Express server
-const app = express();
-// app.use(express.static('public'));
-
-// if (process.env.NODE_ENV === 'development') {
-//   // Setup Webpack for development
-//   const compiler = webpack(webpackConfig);
-//   app.use(webpackDevMiddleware(compiler));
-// } else {
-//   // Static serve the dist/ folder in production
-//   app.use(express.static('dist'));
-// }
-
-app.all("/ping", (req,res) => {
-  res.sendStatus(200)
-})
-
-// Listen on port
-const port = process.env.PORT || 3000;
-const server = app.listen(port);
-console.log(`Server listening on port ${port}`);
-
-// Setup socket.io
-const io = socketio(server);
-const game: Game = new Game();
-
-// Listen for socket.io connections
-io.on('connection', (socket: Socket) => {
-  console.log('Player connected!', socket.id);
-
-  socket.on(Constants.MSG_TYPES_JOIN_GAME, (username: string) => game.addPlayer(socket, username));
-  socket.on(Constants.MSG_TYPES_START_GAME, (params: any) => game.start(socket, params));
-  socket.on(Constants.MSG_TYPES_INPUT, (encodedMessage: Uint16Array) => game.handleMovementInput(socket, encodedMessage));
-  socket.on('disconnect', () => game.players.delete(socket.id));
-});
+export class Server {
 
 
+  app:Application
+  roomManager:RoomManager
+  games: Map<string, Game>
+
+ constructor() {
+   this.roomManager = new RoomManager()
+   this.app = express();
+   
+   this.app.use((req,res, next)=> {console.log(req.url); next()})
+
+   this.app.use(express.static(path.join(__dirname, '../public')))
+   this.app.use("/dist",express.static(path.join(__dirname,'../dist')));
+
+   this.app.all("/ping", (req, res) => {
+     res.sendStatus(200)
+   })  
+ }
+
+ run = () => {
+  const port = process.env.PORT || 3000;
+  const server = this.app.listen(port);
+  console.log(`Server listening on port ${port}`);
+  
+  // Setup socket.io
+  const io = socketio(server);
+  const game: Game = new Game();
+  
+  // Listen for socket.io connections
+  io.on('connection', (socket: Socket) => {
+    console.log('Player connected!', socket.id);
+  
+
+    socket.on(Constants.JOIN_ROOM, (roomId:string, username: string) => this.roomManager.joinRoom(roomId,socket, username));
+    socket.on(Constants.CREATE_ROOM, (username: string) => this.roomManager.createRoom(socket, username));
+    socket.on(Constants.MSG_TYPES_START_GAME, (roomId: string) => {this.games.set(roomId, this.roomManager.startRoom(roomId))});
+    // This next line needs a game id
+    socket.on(Constants.MSG_TYPES_INPUT, (encodedMessage: Uint16Array) => game.handleMovementInput(socket, encodedMessage));
+    socket.on('disconnect', () => game.players.delete(socket.id));
+  });
+ }
+  
 
 
+
+
+}
 
 

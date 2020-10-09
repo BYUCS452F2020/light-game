@@ -3,5 +3,7 @@ export enum Constants {
   MSG_TYPES_JOIN_GAME = 'join_game',
   MSG_TYPES_GAME_UPDATE = 'update_game',
   MSG_TYPES_INPUT = 'input',
-  MSG_TYPES_GAME_OVER = 'dead'
+  MSG_TYPES_GAME_OVER = 'dead',
+  JOIN_ROOM = 'join_room',
+  CREATE_ROOM = 'create_room'
 }
