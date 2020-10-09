@@ -1,7 +1,7 @@
 "use strict";
 exports.__esModule = true;
 exports.generatePolygon = void 0;
-var priority_queue_1 = require("../client/src/priority_queue");
+var priority_queue_1 = require("../shared/priority_queue");
 var domain_1 = require("./domain");
 function generatePolygon(numPoints, startX, startY, maxSize) {
     if (numPoints < 3) {

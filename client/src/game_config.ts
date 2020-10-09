@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser'
 import { GameState } from './game_state'
+import { TitleScene } from './title'
 
 export class GameConfig {
     config: Phaser.Types.Core.GameConfig;
@@ -12,13 +13,17 @@ export class GameConfig {
           type: Phaser.AUTO,
           width: window.outerWidth,
           height: window.outerHeight,
+          scale: {
+            mode: Phaser.Scale.FIT,
+            autoCenter: Phaser.Scale.CENTER_BOTH
+          },
           physics: {
             default: 'arcade',
             arcade: {
               gravity: { y: 200 },
             },
           },
-          scene: scene
+          scene: [TitleScene, scene]
       }
     }
 

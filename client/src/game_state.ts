@@ -1,11 +1,12 @@
 import * as Phaser from 'phaser'
 import { Line } from './line'
-import { priorityQueue } from './priority_queue'
 import { GameMap, Player, MapLocation, Obstacle } from './models'
 import ioclient from 'socket.io-client';
 
 import * as Encoder from '../../shared/encoder';
-import { Constants } from '../../shared/constants'
+import { Constants } from '../../shared/constants';
+import { priorityQueue } from '../../shared/priority_queue';
+import { Point } from '../../shared/point';
 
 export class GameState extends Phaser.Scene {
   static roomWidth: number;
@@ -40,7 +41,7 @@ export class GameState extends Phaser.Scene {
   playerId: number = -1; // Used to detect which player information is this person's
   circleUsername: string = "Test-UserName-" + Math.floor(Math.random() * 1000); // TODO: Not always unique
 
-  players: {id: number, x: number, y:number}[]
+  players: {id: number, x: number, y:number, visionDirection: number, visionAngle: number, hp: number}[]
   lightPlayerIds: number[]
   isLightPlayer: boolean // Cached version of above, but relative to this player's id
 
@@ -54,20 +55,24 @@ export class GameState extends Phaser.Scene {
   hiddenDirection: number = 90 * Math.PI/180;
   hiddenAngle: number = 90 * Math.PI/180;
   hidden_polygon = new Phaser.Geom.Polygon();
-  hiddenIsFlashlight = true;
+  hiddenIsFlashlight = true; // Whether the vision of this player is of a flashlight form (not whether they are on the light team)
 
   flashlightAngle = 90 * Math.PI/180;
   flashlightDirection = 90 * Math.PI/180;
-  isFlashlight = true;
+  flashlightHealth = 100;
+  isFlashlight = true; // Whether the vision of this player is of a flashlight form (not whether they are on the light team)
 
   graphics: Phaser.GameObjects.Graphics;
+  maskGraphics: Phaser.GameObjects.Graphics;
 
     constructor(config: string | Phaser.Types.Scenes.SettingsConfig) {
-      super(config)
+      // TODO: Not sure how else this phaser scene is supposed to be created
+      super('room')
     }
 
     preload() {
       this.socketClient = ioclient('http://localhost:3000');
+      // this.socketClient = ioclient('http://ec2-34-222-92-7.us-west-2.compute.amazonaws.com:3000');
       this.socketClient.emit(Constants.MSG_TYPES_JOIN_GAME, this.circleUsername);
       this.socketClient.on(Constants.MSG_TYPES_START_GAME, (startGameObject: object) => {
         console.log("START GAME!")
@@ -79,7 +84,7 @@ export class GameState extends Phaser.Scene {
 
           this.lightPlayerIds = lightPlayerIds;
           console.log(lightPlayerIds);
-          this.isLightPlayer = this.lightPlayerIds.includes(this.playerId);
+          // this.isLightPlayer = this.lightPlayerIds.includes(this.playerId);
           // Include's extra metadata about each player that we do not need to store (but could be useful later on [leaderboards])
           // const players = JSON.parse(startGameObject['map'])
 
@@ -119,26 +124,27 @@ export class GameState extends Phaser.Scene {
       this.socketClient.on(Constants.MSG_TYPES_GAME_UPDATE, (encodedPlayers: Uint16Array) => {
         this.players = Encoder.decodeUpdate(encodedPlayers);
 
-        console.log(this.players)
+        // console.log(this.players)
         
         // Make sure we update each player correctly
-        let numPlayers = this.players.length;
+        // let numPlayers = this.players.length;
 
-        // console.log(`${numPlayers} -> ${playerLocations}`)
-        for (let index = 0; index < numPlayers; ++index) {
-          const currentPlayer = this.players[index];
-          if (currentPlayer.id == this.playerId) {
-            this.circleX = currentPlayer['x']
-            this.circleY = currentPlayer['y']
-            this.flashlightDirection = currentPlayer['d']
-            this.flashlightAngle = currentPlayer['a']
-          } else {
-            this.hiddenX = currentPlayer['x'] // TODO: Modify to include more than 2 players
-            this.hiddenY = currentPlayer['y']
-            this.hiddenDirection = currentPlayer['d']
-            this.hiddenAngle = currentPlayer['a']
-          }
-        }
+        // for (let index = 0; index < numPlayers; ++index) {
+        //   const currentPlayer = this.players[index];
+        //   if (currentPlayer.id == this.playerId) {
+        //     this.circleX = currentPlayer['x']
+        //     this.circleY = currentPlayer['y']
+        //     this.flashlightDirection = currentPlayer['d']
+        //     this.flashlightAngle = currentPlayer['a']
+        //     this.flashlightHealth = currentPlayer['hp']
+        //   } else {
+        //     this.hiddenX = currentPlayer['x'] // TODO: Modify to include more than 2 players
+        //     this.hiddenY = currentPlayer['y']
+        //     this.hiddenDirection = currentPlayer['d']
+        //     this.hiddenAngle = currentPlayer['a']
+        //     this.hidden_player_health = currentPlayer['hp']
+        //   }
+        // }
         
       })
       // this.load.setBaseURL('http://labs.phaser.io')
@@ -149,6 +155,7 @@ export class GameState extends Phaser.Scene {
 
    create() {
     this.graphics = this.add.graphics({ x: 0, y: 0, lineStyle: { width: 4, color: 0xaa00aa } });
+    this.maskGraphics = this.add.graphics({ x: 0, y: 0, lineStyle: { width: 4, color: 0xaa00aa } });
 
     // Setup controls for user
     this.keyUP = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
@@ -180,30 +187,11 @@ export class GameState extends Phaser.Scene {
   }
 
   handlePlayerKeyboardInput() {
-
-    // Light direction is managed by mouse position
-    // if (this.keyLightClockwise.isDown)
-    // {
-    //   this.flashlightDirection += 1 * Math.PI/180
-    // }
-    // if (this.keyLightCounterclockwise.isDown)
-    // {
-    //   this.flashlightDirection -= 1 * Math.PI/180
-    // }
-
-    // var test: Uint16Array = [this.mouse.x, this.mouse.y];
-
-    // const location: MapLocation = new MapLocation(nextPointX, nextPointY);
-    // !(this.mouse.prevPosition.x == this.mouse.x && this.mouse.prevPosition.y == this.mouse.y) 
-    // console.log(`${this.previousMouseX}, ${this.mouse.position.x}`)
-
     // Mouse.previousposition sometimes does not update every frame
     if ((this.keyUP.isUp && this.keyDOWN.isUp && this.keyLEFT.isUp && this.keyRIGHT.isUp && this.keyExpandLight.isUp && this.keyRestrictLight.isUp)
      && (this.previousMouseX == this.mouse.position.x && this.previousMouseY == this.mouse.position.y)) {
       return
     }
-
-    // console.log(`EMITTED INPUT -> ${this.previousMouseX}, ${this.mouse.position.x}`)
 
     this.previousMouseX = this.mouse.x;
     this.previousMouseY = this.mouse.y;
@@ -351,24 +339,15 @@ export class GameState extends Phaser.Scene {
 
     // Significantly enhances performance by removing previously rendered objects
     this.graphics.clear()
+    this.maskGraphics.clear();
+
+    // TODO: Uncomment these next lines to apply an alpha Mask for the light sources
+    // if (this.light_polygon.points.length > 2) {
+    //   this.maskGraphics.fillPoints(this.light_polygon.points, true);
+    // }
+    // this.graphics.mask = new Phaser.Display.Masks.GeometryMask(this, this.maskGraphics);
   
     this.handlePlayerKeyboardInput()
-
-    // Contrain flashlight bounds to unit circle angles
-    if (this.flashlightAngle > 2*Math.PI) {
-      this.flashlightAngle = 2*Math.PI
-    }
-    if (this.flashlightAngle < 0) {
-      this.flashlightAngle = 0
-    }
-
-    // Contrain flashlight bounds to unit circle angles
-    if (this.hiddenAngle > 2*Math.PI) {
-      this.hiddenAngle = 2*Math.PI
-    }
-    if (this.hiddenAngle < 0) {
-      this.hiddenAngle = 0
-    }
   
     // TODO: Not sure if this can be optimized as an image
     for (let index = 0; index < this.numPolygons; ++index) {
@@ -379,106 +358,77 @@ export class GameState extends Phaser.Scene {
       this.graphics.fillPoints(interpretablePoints, true);
     }
 
-    // TODO: Draw the players that have joined the game
-    // console.log("GETTING PLAYERS DRAWN")
+    // Draw players and their respective information (when they are returned by the server)
     if (this.players) {
-      // console.log(this.players.length)
-      for (const player of this.players) {
-        // console.log("CHECKING PLAYER")
-        if (player.id == this.playerId) {
-          this.circle.setTo(player.x, player.y, 5);
+      let numPlayers = this.players.length;
+
+      for (let index = 0; index < numPlayers; ++index) {
+        const currentPlayer = this.players[index];
+
+        // TODO: Change the "true" to what the game says the player's config is
+        const isFlashlight = true;
+        const lightPointOrder = this.calculateRayPolygon(currentPlayer.x, currentPlayer.y, currentPlayer.visionDirection, currentPlayer.visionAngle, isFlashlight);
+        let visionPolygon = new Phaser.Geom.Polygon();
+        visionPolygon.setTo(lightPointOrder);
+
+        // Draw the person's vision polygon
+        // Color is depending if the person is the light or dark team
+        // TODO: Since light player ids is not defined until the game has started, we check for its existance first (should probably change later, because everyone is dark player for a moment)
+        if (this.lightPlayerIds && this.lightPlayerIds.includes(currentPlayer.id)) { 
+          this.graphics.fillStyle(0xffff00)
         } else {
-          // TODO: Modify to include more than 2 players
-          this.hiddenCircle.setTo(player.x, player.y, 5);
+          this.graphics.fillStyle(0x0a0a0a)
         }
+
+        // TODO: Not sure why there is a bug that the polygon points are not more than 2 points (maybe the polygon points are undefined)
+        if (visionPolygon.points.length > 2) {
+          this.graphics.fillPoints(visionPolygon.points, true);
+        }
+
+        // Draw the person
+        // Color is depending if it is this person (red for this, blue for other)
+        if (currentPlayer.id == this.playerId) {
+          this.graphics.fillStyle(0xff0000) 
+        } else {
+          this.graphics.fillStyle(0x0000ff);
+        }
+        this.graphics.fillCircle(currentPlayer.x, currentPlayer.y, 5);
+
+        // Temporary healthbars for this player
+        this.graphics.fillStyle(0xffffff, 0.5)
+        this.graphics.fillRect(currentPlayer.x - 50, currentPlayer.y - 20, 100, 10);
+        this.graphics.fillStyle(currentPlayer.hp, 1.0)
+        this.graphics.fillRect(currentPlayer.x - 50, currentPlayer.y - 20, currentPlayer.hp, 10);
       }
     }
 
-    const lightPointOrder = this.calculateRayPolygon(this.circleX, this.circleY, this.flashlightDirection, this.flashlightAngle, this.isFlashlight)
-    const hiddenPointOrder = this.calculateRayPolygon(this.hiddenX, this.hiddenY, this.hiddenDirection, this.hiddenAngle, this.hiddenIsFlashlight) // TODO: light player is opposite of current players
-
-  // Creating the circle 
-  
-  // Hidden player circle 
-  // this.hiddenCircle.setTo(this.hiddenX, this.hiddenY, 5);
-  
-  this.light_polygon.setTo(lightPointOrder);
-  this.hidden_polygon.setTo(hiddenPointOrder);
-
-  // console.log(`NOTES: (${this.circleX}, ${this.circleY}, ${this.flashlightDirection}, ${this.flashlightDirection}, ${this.isLightPlayer})`)
-  // console.log(`NOTES: ${this.flashlightDirection * 180/Math.PI}, ${this.hiddenDirection * 180/Math.PI}`)
-  // console.log(this.light_polygon.points)
-  // console.log(this.hidden_polygon.points)
-
-  // If light player, the light will be yellow
-  // If dark player, the "light" will be black
-  if (this.isLightPlayer) {
-    this.graphics.fillStyle(0xffff00)
-  } else {
-    this.graphics.fillStyle(0x0a0a0a)
-  }
-  // TODO: Not sure why there is a bug that the polygon points are not more than 2 points (maybe the polygon points are undefined)
-  if (this.light_polygon.points.length > 2) {
-    this.graphics.fillPoints(this.light_polygon.points, true);
-  }
-
-
-  // Flips the previous one
-  if (this.isLightPlayer) {
-    this.graphics.fillStyle(0x0a0a0a)
-  } else {
-    this.graphics.fillStyle(0xffff00)
-  }
-  // TODO: Not sure why there is a bug that the polygon points are not more than 2 points (maybe the polygon points are undefined)
-  if (this.hidden_polygon.points.length > 2) {
-    this.graphics.fillPoints(this.hidden_polygon.points, true);
-  }
-  
-  // Draw both players
-  // console.log(`CIRCLEX: ${this.circle.x}`)
-  this.graphics.fillStyle(0xff0000)
-  this.graphics.fillCircleShape(this.circle);
-
-  this.graphics.fillStyle(0x0000ff)
-  this.graphics.fillCircleShape(this.hiddenCircle);
-
-  var cam = this.cameras.main;
-
-  // Check if hidden player is caught in the light
-
-  if (this.hidden_player_health > 0) {
-    if (this.light_polygon.contains(this.hiddenX, this.hiddenY)) {
-      if (!this.was_hidden_player_caught) {
-        this.cameras.main.flash(250, 255, 0, 0);
-        this.was_hidden_player_caught = true;
-      }
-
-      this.hidden_player_health -= 1;
-      
-      cam.pan(this.hiddenX, this.hiddenY, 2000, 'Elastic', true);
-      cam.zoomTo(2, 1000, 'Elastic', true);
-      
-      this.cameras.main.shake(100, 0.005);
-    } else {
-      if (this.was_hidden_player_caught) {
-        this.was_hidden_player_caught = false;
-      }
-      
-      cam.pan(0, 0, 2000, 'Elastic', true);
-      cam.zoomTo(1, 1000, 'Elastic', true);
-    }
-  } else {
-    // Game Is Over
-    cam.pan(0, 0, 2000, 'Elastic', true);
-    cam.zoomTo(1, 1000, 'Elastic', true);
-    let text = this.add.text(GameState.roomWidth/2 - 80, GameState.roomHeight/2 - 30, 'Light WINS!').setFontSize(34).setScrollFactor(0);
-    text.setShadow(1, 1, '#000000', 2);
-  }
+    // Check if hidden player is caught in the light (graphical aesthetics)
+    // var cam = this.cameras.main;
+    // if (this.hidden_player_health > 0) {
+    // if (this.light_polygon.contains(this.hiddenX, this.hiddenY)) {
+    //     if (!this.was_hidden_player_caught) {
+    //       this.cameras.main.flash(250, 255, 0, 0);
+    //       this.was_hidden_player_caught = true;
+    //     }
+        
+    //     cam.pan(this.hiddenX, this.hiddenY, 2000, 'Elastic', true);
+    //     cam.zoomTo(2, 1000, 'Elastic', true);
+        
+    //     this.cameras.main.shake(100, 0.005);
+    //   } else {
+    //     if (this.was_hidden_player_caught) {
+    //       this.was_hidden_player_caught = false;
+    //     }
+        
+    //     cam.pan(0, 0, 2000, 'Elastic', true);
+    //     cam.zoomTo(1, 1000, 'Elastic', true);
+    //   }
+    // } else {
+    //   // Game Is Over
+    //   cam.pan(0, 0, 2000, 'Elastic', true);
+    //   cam.zoomTo(1, 1000, 'Elastic', true);
+    //   let text = this.add.text(GameState.roomWidth/2 - 80, GameState.roomHeight/2 - 30, 'Light WINS!').setFontSize(34).setScrollFactor(0);
+    //   text.setShadow(1, 1, '#000000', 2);
+    // }
   }
 }
-
-class Point {
-  x:number;
-  y:number;
-}
-

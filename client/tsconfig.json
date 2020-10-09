@@ -6,7 +6,7 @@
       "esModuleInterop": true
     },
     "include": [
-      "**/*.ts", "../server/polygon_generator.ts", "../server/priority_queue.ts", "../server/priority_queue.ts"
+      "**/*.ts", "../server/polygon_generator.ts", "../server/priority_queue.ts", "../server/priority_queue.ts", "../shared/priority_queue.ts"
     ],
     // "typeRoots": [
     //   "../node_modules/phaser/types"

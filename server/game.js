@@ -21,6 +21,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 exports.__esModule = true;
 var Encoder = __importStar(require("../shared/encoder"));
 var domain_1 = require("./domain");
+var priority_queue_1 = require("../shared/priority_queue");
 var constants_1 = require("../shared/constants");
 var Game = (function () {
     function Game() {
@@ -40,10 +41,11 @@ var Game = (function () {
         var _this = this;
         var isGameReadyToStart = (this.players ? this.players.size > 1 : false) && this.map.isGameMapGenerated;
         var _a = Array.from(this.players)[domain_1.getRandomInt(this.players.size)], _ = _a[0], lightPlayer = _a[1];
+        this.lightPlayer = lightPlayer;
         var jsonMap = JSON.stringify(this.map);
         this.players.forEach(function (player) {
             if (isGameReadyToStart) {
-                player.socket.emit(constants_1.Constants.MSG_TYPES_START_GAME, { isStarted: isGameReadyToStart, map: jsonMap, players: _this.generatePlayerArray(), lightPlayerIds: "[" + lightPlayer.id + ", -1]" });
+                player.socket.emit(constants_1.Constants.MSG_TYPES_START_GAME, { isStarted: isGameReadyToStart, map: jsonMap, players: _this.generatePlayerArray(), lightPlayerIds: "[" + _this.lightPlayer.id + ", -1]" });
             }
             else {
                 player.socket.emit(constants_1.Constants.MSG_TYPES_START_GAME, { isStarted: isGameReadyToStart });
@@ -158,26 +160,140 @@ var Game = (function () {
         if (playerInput.keyRestrictLight) {
             player.visionAngle -= 1 * Math.PI / 180;
         }
+        if (player.visionAngle > 2 * Math.PI - 0.000001) {
+            player.visionAngle = 2 * Math.PI - 0.000001;
+        }
+        if (player.visionAngle < 0) {
+            player.visionAngle = 0;
+        }
         var diffX = playerInput.mouseX - player.position.x;
         var diffY = playerInput.mouseY - player.position.y;
         player.visionDirection = Math.atan2(diffY, diffX);
-        console.log(socket.id + " -> " + diffX + ", " + diffY + ", " + player.visionDirection * 180 / Math.PI);
         var returnValue = this.handleMovement(player.position.x, player.position.y, nextPointX, nextPointY);
         player.position.x = returnValue[0];
         player.position.y = returnValue[1];
     };
-    Game.prototype.handlePlayerKeyboardInput = function () {
+    Game.prototype.calculateRayPolygon = function (circleX, circleY, flashlightDirection, flashlightAngle, isFlashlight) {
+        var lowerRayBounds = this.boundAngle(flashlightDirection - flashlightAngle / 2);
+        var upperRayBounds = this.boundAngle(flashlightDirection + flashlightAngle / 2);
+        var rayAngleQueue = priority_queue_1.priorityQueue();
+        if (isFlashlight) {
+            var lowerX = circleX + Math.cos(lowerRayBounds) * 50;
+            var lowerY = circleY + Math.sin(lowerRayBounds) * 50;
+            var upperX = circleX + Math.cos(upperRayBounds) * 50;
+            var upperY = circleY + Math.sin(upperRayBounds) * 50;
+            rayAngleQueue.insert({ angle: lowerRayBounds, x: lowerX, y: lowerY }, lowerRayBounds);
+            rayAngleQueue.insert({ angle: upperRayBounds, x: upperX, y: upperY }, upperRayBounds);
+        }
+        for (var outerIndex = 0; outerIndex < this.map.numPoints; ++outerIndex) {
+            var currentPoint = this.map.allPoints[outerIndex];
+            var diffX = currentPoint.x - circleX;
+            var diffY = currentPoint.y - circleY;
+            var rayAngle = Math.atan2(diffY, diffX);
+            var beforeAngle = this.boundAngle(rayAngle - 0.00001);
+            var afterAngle = this.boundAngle(rayAngle + 0.00001);
+            var normalBounds = (lowerRayBounds < rayAngle && upperRayBounds > rayAngle);
+            var reversedBounds = (lowerRayBounds > upperRayBounds) && ((-Math.PI < rayAngle && upperRayBounds > rayAngle) || (lowerRayBounds < rayAngle && Math.PI > rayAngle));
+            if (!isFlashlight || reversedBounds || normalBounds) {
+                rayAngleQueue.insert({ angle: beforeAngle, x: currentPoint.x, y: currentPoint.y }, beforeAngle);
+                rayAngleQueue.insert({ angle: rayAngle, x: currentPoint.x, y: currentPoint.y }, rayAngle);
+                rayAngleQueue.insert({ angle: afterAngle, x: currentPoint.x, y: currentPoint.y }, afterAngle);
+            }
+        }
+        var visionQueue = priority_queue_1.priorityQueue();
+        var rayAngleLength = rayAngleQueue.size();
+        for (var outerIndex = 0; outerIndex < rayAngleLength; ++outerIndex) {
+            var _a = rayAngleQueue.pop(), angle = _a.angle, x = _a.x, y = _a.y;
+            var rayAngle = angle;
+            var raySlope = Math.tan(rayAngle);
+            var rayYIntercept = -(raySlope) * circleX + circleY;
+            var currentCollisionDistance = 100000000000;
+            var bestCollisionSoFar = { x: -1, y: -1 };
+            for (var innerIndex = 0; innerIndex < this.map.numEdges; ++innerIndex) {
+                var currentEdge = this.map.allEdges[innerIndex];
+                var collisionX = void 0;
+                var collisionY = void 0;
+                if (currentEdge.slope == null || currentEdge.slope == Infinity || currentEdge.slope == -Infinity) {
+                    collisionX = currentEdge.minX;
+                    collisionY = raySlope * collisionX + rayYIntercept;
+                }
+                else {
+                    collisionX = (rayYIntercept - currentEdge.b) / (currentEdge.slope - raySlope);
+                    collisionY = currentEdge.slope * collisionX + currentEdge.b;
+                }
+                if (collisionX <= currentEdge.maxX + 0.00001 && collisionX >= currentEdge.minX - 0.00001 &&
+                    collisionY <= currentEdge.maxY + 0.00001 && collisionY >= currentEdge.minY - 0.00001) {
+                    var distanceToLightOrigin = Math.sqrt(Math.pow(collisionX - circleX, 2) + Math.pow(collisionY - circleY, 2));
+                    var angleToLight = Math.atan2(collisionY - circleY, collisionX - circleX);
+                    if (distanceToLightOrigin < currentCollisionDistance &&
+                        ((angleToLight < rayAngle + 0.001 && angleToLight > rayAngle - 0.001))) {
+                        bestCollisionSoFar = { x: collisionX, y: collisionY };
+                        currentCollisionDistance = distanceToLightOrigin;
+                    }
+                }
+            }
+            visionQueue.insert(bestCollisionSoFar, rayAngle);
+        }
+        if (isFlashlight) {
+            var joinAngle = this.boundAngle(flashlightDirection + Math.PI);
+            visionQueue.insert({ x: circleX, y: circleY }, joinAngle);
+        }
+        var finalPointOrder = [];
+        while (visionQueue.peek() != null) {
+            var nextPoint = visionQueue.pop();
+            var pointX = nextPoint.x;
+            var pointY = nextPoint.y;
+            finalPointOrder.push(pointX, pointY);
+        }
+        return finalPointOrder;
+    };
+    Game.prototype.lightPointOrderContains = function (lightPointOrder, x, y) {
+        var inside = false;
+        var numEntires = lightPointOrder.length;
+        if (numEntires % 2 != 0) {
+            throw new Error("Odd number of points");
+        }
+        if (numEntires / 2 < 3) {
+            throw new Error("Not enough points to create polygon");
+        }
+        var jx = lightPointOrder[numEntires - 2];
+        var jy = lightPointOrder[numEntires - 1];
+        for (var i = 0; i < numEntires; i += 2) {
+            var ix = lightPointOrder[i];
+            var iy = lightPointOrder[i + 1];
+            if (((iy <= y && y < jy) || (jy <= y && y < iy)) && (x < (jx - ix) * (y - iy) / (jy - iy) + ix)) {
+                inside = !inside;
+            }
+            jx = ix;
+            jy = iy;
+        }
+        return inside;
+    };
+    Game.prototype.checkIfLightContainsPlayer = function () {
+        var _this = this;
+        var lightPointOrder = this.calculateRayPolygon(this.lightPlayer.position.x, this.lightPlayer.position.y, this.lightPlayer.visionDirection, this.lightPlayer.visionAngle, true);
+        this.players.forEach(function (player, key) {
+            if (_this.lightPlayer.id !== player.id) {
+                if (_this.lightPointOrderContains(lightPointOrder, player.position.x, player.position.y)) {
+                    if (player.hp > 0) {
+                        player.hp -= 1;
+                    }
+                }
+                else {
+                }
+            }
+            else {
+            }
+        });
     };
     Game.prototype.update = function () {
-        var _this = this;
         var now = Date.now();
         var dt = (now - this.lastUpdateTime) / 1000;
         this.lastUpdateTime = now;
+        if (this.lightPlayer) {
+            this.checkIfLightContainsPlayer();
+        }
         this.players.forEach(function (player, id) {
-            if (player.hp <= 0) {
-                player.socket.emit(constants_1.Constants.MSG_TYPES_GAME_OVER);
-                _this.players["delete"](id);
-            }
         });
         var playerArray = Encoder.encodeUpdate(this.players);
         this.players.forEach(function (player) {

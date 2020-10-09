@@ -3,7 +3,7 @@ exports.__esModule = true;
 exports.decodeInput = exports.encodeInput = exports.decodeUpdate = exports.encodeUpdate = void 0;
 exports.encodeUpdate = function (players) {
     var playersLength = players.size;
-    var arr = new Uint16Array(1 + playersLength * 5);
+    var arr = new Uint16Array(1 + playersLength * 6);
     arr[0] = playersLength;
     var i = 1;
     players.forEach(function (value, key) {
@@ -12,7 +12,8 @@ exports.encodeUpdate = function (players) {
         arr[i + 2] = value.position.y;
         arr[i + 3] = value.visionDirection * 180 / Math.PI + 180;
         arr[i + 4] = value.visionAngle * 180 / Math.PI + 180;
-        i = i + 5;
+        arr[i + 5] = value.hp;
+        i = i + 6;
     });
     return arr;
 };
@@ -20,13 +21,14 @@ exports.decodeUpdate = function (encodedArr) {
     var players = [];
     var numPlayers = encodedArr[0];
     var playerNumber = 0;
-    for (var i = 1; playerNumber < numPlayers; i += 5, playerNumber += 1) {
+    for (var i = 1; playerNumber < numPlayers; i += 6, playerNumber += 1) {
         var player = {};
         player['id'] = encodedArr[i];
         player['x'] = encodedArr[i + 1];
         player['y'] = encodedArr[i + 2];
-        player['d'] = (encodedArr[i + 3] - 180) * Math.PI / 180;
-        player['a'] = (encodedArr[i + 4] - 180) * Math.PI / 180;
+        player['visionDirection'] = (encodedArr[i + 3] - 180) * Math.PI / 180;
+        player['visionAngle'] = (encodedArr[i + 4] - 180) * Math.PI / 180;
+        player['hp'] = encodedArr[i + 5];
         players.push(player);
     }
     return players;
