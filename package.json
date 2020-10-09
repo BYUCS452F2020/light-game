@@ -4,11 +4,9 @@
   "description": "2D game for CS452",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "compile": "webpack --config ./client/webpack.common.js",
-    "start": "npx webpack-dev-server --config ./client/webpack.common.js --port 9000",
-    "watch": "concurrently \"tsc --build server/tsconfig.json -w\" \" nodemon server/server.js\"",
-    "server": "tsc --build server/tsconfig.json && node server/server.js"
+    "dev:frontend": "SERVER_HOST=localhost:3000 npx webpack-dev-server --config ./client/webpack.common.js --port 9000",
+    "dev:server": "NODE_ENV=development concurrently \"tsc --build server/tsconfig.json -w\" \" nodemon server/index.js\"",
+    "start": "tsc --build server/tsconfig.json && node server/index.js"
   },
   "author": "Aaron Egbert",
   "license": "ISC",
@@ -19,12 +17,16 @@
     "phaser": "^3.24.1",
     "socket.io": "^2.3.0",
     "socket.io-client": "^2.3.0",
-    "sqlite3": "^5.0.0"
+    "sqlite3": "^5.0.0",
+    "uuid": "^8.3.1"
   },
   "devDependencies": {
     "@types/express": "^4.17.8",
     "@types/node": "^14.11.1",
     "@types/socket.io": "^2.1.11",
+    "@types/uuid": "^8.3.0",
+    "@types/webpack": "^4.41.22",
+    "@types/webpack-dev-middleware": "^3.7.2",
     "mini-css-extract-plugin": "^0.11.2",
     "optimize-css-assets-webpack-plugin": "^5.0.4",
     "parcel": "^1.12.4",

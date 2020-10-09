@@ -18,49 +18,48 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
-exports.__esModule = true;
-var Encoder = __importStar(require("../shared/encoder"));
-var domain_1 = require("./domain");
-var constants_1 = require("../shared/constants");
-var Game = (function () {
-    function Game() {
+Object.defineProperty(exports, "__esModule", { value: true });
+const Encoder = __importStar(require("../shared/encoder"));
+const domain_1 = require("./domain");
+const constants_1 = require("../shared/constants");
+class Game {
+    constructor() {
         this.players = new Map();
         this.map = new domain_1.GameMap(2);
         this.lastUpdateTime = Date.now();
         setInterval(this.update.bind(this), 1000 / 60);
     }
-    Game.prototype.generatePlayerArray = function () {
-        var playerArray = [];
-        this.players.forEach(function (value, key) {
+    generatePlayerArray() {
+        let playerArray = [];
+        this.players.forEach((value, key) => {
             playerArray.push({ username: value.username, id: value.id, position: value.position, hp: value.hp });
         });
         return playerArray;
-    };
-    Game.prototype.start = function (socket, params) {
-        var _this = this;
-        var isGameReadyToStart = (this.players ? this.players.size > 1 : false) && this.map.isGameMapGenerated;
-        var _a = Array.from(this.players)[domain_1.getRandomInt(this.players.size)], _ = _a[0], lightPlayer = _a[1];
-        var jsonMap = JSON.stringify(this.map);
-        this.players.forEach(function (player) {
+    }
+    start(socket, params) {
+        const isGameReadyToStart = (this.players ? this.players.size > 1 : false) && this.map.isGameMapGenerated;
+        let [_, lightPlayer] = Array.from(this.players)[domain_1.getRandomInt(this.players.size)];
+        const jsonMap = JSON.stringify(this.map);
+        this.players.forEach(player => {
             if (isGameReadyToStart) {
-                player.socket.emit(constants_1.Constants.MSG_TYPES_START_GAME, { isStarted: isGameReadyToStart, map: jsonMap, players: _this.generatePlayerArray(), lightPlayerIds: "[" + lightPlayer.id + ", -1]" });
+                player.socket.emit(constants_1.Constants.MSG_TYPES_START_GAME, { isStarted: isGameReadyToStart, map: jsonMap, players: this.generatePlayerArray(), lightPlayerIds: `[${lightPlayer.id}, -1]` });
             }
             else {
                 player.socket.emit(constants_1.Constants.MSG_TYPES_START_GAME, { isStarted: isGameReadyToStart });
             }
         });
-    };
-    Game.prototype.addPlayer = function (socket, username) {
-        var x = this.map.width * (0.25 + Math.random() * 0.5);
-        var y = this.map.height * (0.25 + Math.random() * 0.5);
+    }
+    addPlayer(socket, username) {
+        const x = this.map.width * (0.25 + Math.random() * 0.5);
+        const y = this.map.height * (0.25 + Math.random() * 0.5);
         console.log("ADDING PLAYER!");
         console.log(x, y);
-        var uniquePlayerId = this.players.size;
-        var newPlayer = new domain_1.Player(username, uniquePlayerId, socket, new domain_1.MapLocation(x, y), 90 * Math.PI / 180, 90 * Math.PI / 180);
+        const uniquePlayerId = this.players.size;
+        const newPlayer = new domain_1.Player(username, uniquePlayerId, socket, new domain_1.MapLocation(x, y), 90 * Math.PI / 180, 90 * Math.PI / 180);
         this.players.set(socket.id, newPlayer);
-        socket.emit(constants_1.Constants.MSG_TYPES_JOIN_GAME, { x: x, y: y, id: uniquePlayerId });
-    };
-    Game.prototype.boundAngle = function (angle) {
+        socket.emit(constants_1.Constants.MSG_TYPES_JOIN_GAME, { x, y, id: uniquePlayerId });
+    }
+    boundAngle(angle) {
         angle %= (2 * Math.PI);
         if (angle > Math.PI) {
             angle -= 2 * Math.PI;
@@ -69,22 +68,22 @@ var Game = (function () {
             angle += 2 * Math.PI;
         }
         return angle;
-    };
-    Game.prototype.handleMovement = function (currentX, currentY, nextPointX, nextPointY) {
-        var diffX = nextPointX - currentX;
-        var diffY = nextPointY - currentY;
-        var distanceAttemptingToTravel = Math.sqrt(Math.pow(diffX, 2) + Math.pow(diffY, 2));
-        var rayAngle = Math.atan2(diffY, diffX);
-        var raySlope = Math.tan(rayAngle);
-        var rayYIntercept = -(raySlope) * currentX + currentY;
-        var collisionHappened = false;
-        var currentCollisionDistance = distanceAttemptingToTravel;
-        var bestCollisionSoFarLineAngle = 0;
-        for (var innerIndex = 0; innerIndex < this.map.numEdges; ++innerIndex) {
-            var currentEdge = this.map.allEdges[innerIndex];
-            var edgeAngle = Math.atan2(currentEdge.y1 - currentEdge.y2, currentEdge.x1 - currentEdge.x2);
-            var collisionX = void 0;
-            var collisionY = void 0;
+    }
+    handleMovement(currentX, currentY, nextPointX, nextPointY) {
+        const diffX = nextPointX - currentX;
+        const diffY = nextPointY - currentY;
+        const distanceAttemptingToTravel = Math.sqrt(Math.pow(diffX, 2) + Math.pow(diffY, 2));
+        const rayAngle = Math.atan2(diffY, diffX);
+        const raySlope = Math.tan(rayAngle);
+        const rayYIntercept = -(raySlope) * currentX + currentY;
+        let collisionHappened = false;
+        let currentCollisionDistance = distanceAttemptingToTravel;
+        let bestCollisionSoFarLineAngle = 0;
+        for (let innerIndex = 0; innerIndex < this.map.numEdges; ++innerIndex) {
+            const currentEdge = this.map.allEdges[innerIndex];
+            const edgeAngle = Math.atan2(currentEdge.y1 - currentEdge.y2, currentEdge.x1 - currentEdge.x2);
+            let collisionX;
+            let collisionY;
             if (currentEdge.slope == Infinity || currentEdge.slope == -Infinity) {
                 collisionX = currentEdge.minX;
                 collisionY = raySlope * collisionX + rayYIntercept;
@@ -95,8 +94,8 @@ var Game = (function () {
             }
             if (collisionX <= currentEdge.maxX + 0.00001 && collisionX >= currentEdge.minX - 0.00001 &&
                 collisionY <= currentEdge.maxY + 0.00001 && collisionY >= currentEdge.minY - 0.00001) {
-                var distanceToLightOrigin = Math.sqrt(Math.pow(collisionX - currentX, 2) + Math.pow(collisionY - currentY, 2));
-                var angleToLight = this.boundAngle(Math.atan2(collisionY - currentY, collisionX - currentX));
+                const distanceToLightOrigin = Math.sqrt(Math.pow(collisionX - currentX, 2) + Math.pow(collisionY - currentY, 2));
+                const angleToLight = this.boundAngle(Math.atan2(collisionY - currentY, collisionX - currentX));
                 if (distanceToLightOrigin < currentCollisionDistance &&
                     ((angleToLight < rayAngle + 0.01 && angleToLight > rayAngle - 0.01) ||
                         (angleToLight + 2 * Math.PI < rayAngle + 0.01 && angleToLight + 2 * Math.PI > rayAngle - 0.01) ||
@@ -108,9 +107,9 @@ var Game = (function () {
             }
         }
         if (collisionHappened) {
-            var rawDistance = distanceAttemptingToTravel * Math.cos(rayAngle - bestCollisionSoFarLineAngle);
-            var xDiff = Math.cos(bestCollisionSoFarLineAngle) * rawDistance;
-            var yDiff = Math.sin(bestCollisionSoFarLineAngle) * rawDistance;
+            const rawDistance = distanceAttemptingToTravel * Math.cos(rayAngle - bestCollisionSoFarLineAngle);
+            const xDiff = Math.cos(bestCollisionSoFarLineAngle) * rawDistance;
+            const yDiff = Math.sin(bestCollisionSoFarLineAngle) * rawDistance;
             currentX += xDiff;
             currentY += yDiff;
         }
@@ -131,15 +130,15 @@ var Game = (function () {
             currentY = 0;
         }
         return [currentX, currentY];
-    };
-    Game.prototype.handleMovementInput = function (socket, encodedMessage) {
-        var player = this.players.get(socket.id);
+    }
+    handleMovementInput(socket, encodedMessage) {
+        const player = this.players.get(socket.id);
         if (!player) {
             return;
         }
-        var playerInput = Encoder.decodeInput(encodedMessage);
-        var nextPointX = player.position.x;
-        var nextPointY = player.position.y;
+        let playerInput = Encoder.decodeInput(encodedMessage);
+        let nextPointX = player.position.x;
+        let nextPointY = player.position.y;
         if (playerInput.keyUP) {
             nextPointY -= 3;
         }
@@ -158,32 +157,30 @@ var Game = (function () {
         if (playerInput.keyRestrictLight) {
             player.visionAngle -= 1 * Math.PI / 180;
         }
-        var diffX = playerInput.mouseX - player.position.x;
-        var diffY = playerInput.mouseY - player.position.y;
+        const diffX = playerInput.mouseX - player.position.x;
+        const diffY = playerInput.mouseY - player.position.y;
         player.visionDirection = Math.atan2(diffY, diffX);
-        console.log(socket.id + " -> " + diffX + ", " + diffY + ", " + player.visionDirection * 180 / Math.PI);
-        var returnValue = this.handleMovement(player.position.x, player.position.y, nextPointX, nextPointY);
+        console.log(`${socket.id} -> ${diffX}, ${diffY}, ${player.visionDirection * 180 / Math.PI}`);
+        const returnValue = this.handleMovement(player.position.x, player.position.y, nextPointX, nextPointY);
         player.position.x = returnValue[0];
         player.position.y = returnValue[1];
-    };
-    Game.prototype.handlePlayerKeyboardInput = function () {
-    };
-    Game.prototype.update = function () {
-        var _this = this;
-        var now = Date.now();
-        var dt = (now - this.lastUpdateTime) / 1000;
+    }
+    handlePlayerKeyboardInput() {
+    }
+    update() {
+        const now = Date.now();
+        const dt = (now - this.lastUpdateTime) / 1000;
         this.lastUpdateTime = now;
-        this.players.forEach(function (player, id) {
+        this.players.forEach((player, id) => {
             if (player.hp <= 0) {
                 player.socket.emit(constants_1.Constants.MSG_TYPES_GAME_OVER);
-                _this.players["delete"](id);
+                this.players.delete(id);
             }
         });
-        var playerArray = Encoder.encodeUpdate(this.players);
-        this.players.forEach(function (player) {
+        const playerArray = Encoder.encodeUpdate(this.players);
+        this.players.forEach(player => {
             player.socket.emit(constants_1.Constants.MSG_TYPES_GAME_UPDATE, playerArray);
         });
-    };
-    return Game;
-}());
-exports["default"] = Game;
+    }
+}
+exports.default = Game;

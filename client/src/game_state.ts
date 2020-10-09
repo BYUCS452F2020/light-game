@@ -67,7 +67,7 @@ export class GameState extends Phaser.Scene {
     }
 
     preload() {
-      this.socketClient = ioclient('http://localhost:3000');
+      this.socketClient = ioclient(process.env.SERVER_HOST);
       this.socketClient.emit(Constants.MSG_TYPES_JOIN_GAME, this.circleUsername);
       this.socketClient.on(Constants.MSG_TYPES_START_GAME, (startGameObject: object) => {
         console.log("START GAME!")

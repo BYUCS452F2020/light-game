@@ -1,12 +1,12 @@
 "use strict";
-exports.__esModule = true;
+Object.defineProperty(exports, "__esModule", { value: true });
 exports.decodeInput = exports.encodeInput = exports.decodeUpdate = exports.encodeUpdate = void 0;
-exports.encodeUpdate = function (players) {
-    var playersLength = players.size;
-    var arr = new Uint16Array(1 + playersLength * 5);
+exports.encodeUpdate = (players) => {
+    const playersLength = players.size;
+    let arr = new Uint16Array(1 + playersLength * 5);
     arr[0] = playersLength;
-    var i = 1;
-    players.forEach(function (value, key) {
+    let i = 1;
+    players.forEach((value, key) => {
         arr[i] = value.id;
         arr[i + 1] = value.position.x;
         arr[i + 2] = value.position.y;
@@ -16,12 +16,12 @@ exports.encodeUpdate = function (players) {
     });
     return arr;
 };
-exports.decodeUpdate = function (encodedArr) {
-    var players = [];
-    var numPlayers = encodedArr[0];
-    var playerNumber = 0;
-    for (var i = 1; playerNumber < numPlayers; i += 5, playerNumber += 1) {
-        var player = {};
+exports.decodeUpdate = (encodedArr) => {
+    let players = [];
+    const numPlayers = encodedArr[0];
+    let playerNumber = 0;
+    for (let i = 1; playerNumber < numPlayers; i += 5, playerNumber += 1) {
+        let player = {};
         player['id'] = encodedArr[i];
         player['x'] = encodedArr[i + 1];
         player['y'] = encodedArr[i + 2];
@@ -31,8 +31,8 @@ exports.decodeUpdate = function (encodedArr) {
     }
     return players;
 };
-exports.encodeInput = function (mouseX, mouseY, keyUP, keyDOWN, keyLEFT, keyRIGHT, keyExpandLight, keyRestrictLight) {
-    var arr = new Uint16Array(8);
+exports.encodeInput = (mouseX, mouseY, keyUP, keyDOWN, keyLEFT, keyRIGHT, keyExpandLight, keyRestrictLight) => {
+    let arr = new Uint16Array(8);
     arr[0] = mouseX;
     arr[1] = mouseY;
     arr[2] = keyUP ? 1 : 0;
@@ -43,6 +43,6 @@ exports.encodeInput = function (mouseX, mouseY, keyUP, keyDOWN, keyLEFT, keyRIGH
     arr[7] = keyRestrictLight ? 1 : 0;
     return arr;
 };
-exports.decodeInput = function (arr) {
+exports.decodeInput = (arr) => {
     return { mouseX: arr[0], mouseY: arr[1], keyUP: arr[2], keyDOWN: arr[3], keyLEFT: arr[4], keyRIGHT: arr[5], keyExpandLight: arr[6], keyRestrictLight: arr[7] };
 };
