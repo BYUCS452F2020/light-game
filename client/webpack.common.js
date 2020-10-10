@@ -1,5 +1,8 @@
 const path = require('path');
-module.exports = {
+const webpack = require('webpack')
+
+module.exports = () => {
+  return {
   mode: 'production',
   entry: './client/src/app.ts',
   module: {
@@ -15,17 +18,21 @@ module.exports = {
     extensions: [ '.ts', '.tsx', '.js' ]
   },
   output: {
-    path: path.resolve(__dirname, './dist'),
+    path: path.resolve(__dirname, '../public'),
     publicPath: '/',
     filename: 'bundle.js', //Creates in-memory bundle for "index.html" to pickup
 },
+plugins: [
+  new webpack.EnvironmentPlugin(['SERVER_HOST'])
+],
   // For dev webpack stuff
   devServer: {
     host: 'localhost',
     historyApiFallback: true,
-    contentBase: path.join(__dirname),
+    contentBase: path.resolve(__dirname, '../public'),
     open: false, // Here
     openPage: 'login', // And here
   },
-  devtool: 'cheap-module-source-map',
+  devtool: 'cheap-module-source-map'
+}
 };

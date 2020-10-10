@@ -3,10 +3,11 @@
       // "outDir": "./dist/",
       "target": "es5",
       "sourceMap": true,
-      "esModuleInterop": true
+      "esModuleInterop": true,
+      "removeComments": true
     },
     "include": [
-      "**/*.ts", "../server/polygon_generator.ts", "../server/priority_queue.ts", "../server/priority_queue.ts", "../shared/priority_queue.ts"
+      "**/*.ts", "../shared/priority_queue.ts"
     ],
     // "typeRoots": [
     //   "../node_modules/phaser/types"

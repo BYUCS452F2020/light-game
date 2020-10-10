@@ -1,43 +1,43 @@
 "use strict";
-exports.__esModule = true;
+Object.defineProperty(exports, "__esModule", { value: true });
 exports.priorityQueue = void 0;
-exports.priorityQueue = function () {
-    var heap = [];
-    var parent = function (index) { return Math.floor((index - 1) / 2); };
-    var left = function (index) { return 2 * index + 1; };
-    var right = function (index) { return 2 * index + 2; };
-    var hasLeft = function (index) { return left(index) < heap.length; };
-    var hasRight = function (index) { return right(index) < heap.length; };
-    var swap = function (a, b) {
-        var tmp = heap[a];
+exports.priorityQueue = () => {
+    let heap = [];
+    const parent = (index) => Math.floor((index - 1) / 2);
+    const left = (index) => 2 * index + 1;
+    const right = (index) => 2 * index + 2;
+    const hasLeft = (index) => left(index) < heap.length;
+    const hasRight = (index) => right(index) < heap.length;
+    const swap = (a, b) => {
+        const tmp = heap[a];
         heap[a] = heap[b];
         heap[b] = tmp;
     };
     return {
-        isEmpty: function () { return heap.length == 0; },
-        peek: function () { return heap.length == 0 ? null : heap[0].value; },
-        size: function () { return heap.length; },
-        insert: function (item, prio) {
+        isEmpty: () => heap.length == 0,
+        peek: () => heap.length == 0 ? null : heap[0].value,
+        size: () => heap.length,
+        insert: (item, prio) => {
             heap.push({ key: prio, value: item });
-            var i = heap.length - 1;
+            let i = heap.length - 1;
             while (i > 0) {
-                var p = parent(i);
+                const p = parent(i);
                 if (heap[p].key < heap[i].key)
                     break;
-                var tmp = heap[i];
+                const tmp = heap[i];
                 heap[i] = heap[p];
                 heap[p] = tmp;
                 i = p;
             }
         },
-        pop: function () {
+        pop: () => {
             if (heap.length == 0)
                 return null;
             swap(0, heap.length - 1);
-            var item = heap.pop();
-            var current = 0;
+            const item = heap.pop();
+            let current = 0;
             while (hasLeft(current)) {
-                var smallerChild = left(current);
+                let smallerChild = left(current);
                 if (hasRight(current) && heap[right(current)].key < heap[left(current)].key)
                     smallerChild = right(current);
                 if (heap[smallerChild].key > heap[current].key)
