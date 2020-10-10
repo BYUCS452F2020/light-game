@@ -18,22 +18,13 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
-<<<<<<< HEAD
-exports.__esModule = true;
-var Encoder = __importStar(require("../shared/encoder"));
-var domain_1 = require("./domain");
-var priority_queue_1 = require("../shared/priority_queue");
-var constants_1 = require("../shared/constants");
-var Game = (function () {
-    function Game() {
-=======
 Object.defineProperty(exports, "__esModule", { value: true });
 const Encoder = __importStar(require("../shared/encoder"));
 const domain_1 = require("./domain");
+const priority_queue_1 = require("../shared/priority_queue");
 const constants_1 = require("../shared/constants");
 class Game {
     constructor() {
->>>>>>> 08af4cbea18dde007b6a2dbdd43d4f8aac843e97
         this.players = new Map();
         this.map = new domain_1.GameMap(2);
         this.lastUpdateTime = Date.now();
@@ -45,27 +36,15 @@ class Game {
             playerArray.push({ username: value.username, id: value.id, position: value.position, hp: value.hp });
         });
         return playerArray;
-<<<<<<< HEAD
-    };
-    Game.prototype.start = function (socket, params) {
-        var _this = this;
-        var isGameReadyToStart = (this.players ? this.players.size > 1 : false) && this.map.isGameMapGenerated;
-        var _a = Array.from(this.players)[domain_1.getRandomInt(this.players.size)], _ = _a[0], lightPlayer = _a[1];
-        this.lightPlayer = lightPlayer;
-        var jsonMap = JSON.stringify(this.map);
-        this.players.forEach(function (player) {
-            if (isGameReadyToStart) {
-                player.socket.emit(constants_1.Constants.MSG_TYPES_START_GAME, { isStarted: isGameReadyToStart, map: jsonMap, players: _this.generatePlayerArray(), lightPlayerIds: "[" + _this.lightPlayer.id + ", -1]" });
-=======
     }
     start(socket, params) {
         const isGameReadyToStart = (this.players ? this.players.size > 1 : false) && this.map.isGameMapGenerated;
         let [_, lightPlayer] = Array.from(this.players)[domain_1.getRandomInt(this.players.size)];
+        this.lightPlayer = lightPlayer;
         const jsonMap = JSON.stringify(this.map);
         this.players.forEach(player => {
             if (isGameReadyToStart) {
-                player.socket.emit(constants_1.Constants.MSG_TYPES_START_GAME, { isStarted: isGameReadyToStart, map: jsonMap, players: this.generatePlayerArray(), lightPlayerIds: `[${lightPlayer.id}, -1]` });
->>>>>>> 08af4cbea18dde007b6a2dbdd43d4f8aac843e97
+                player.socket.emit(constants_1.Constants.MSG_TYPES_START_GAME, { isStarted: isGameReadyToStart, map: jsonMap, players: this.generatePlayerArray(), lightPlayerIds: `[${this.lightPlayer.id}, -1]` });
             }
             else {
                 player.socket.emit(constants_1.Constants.MSG_TYPES_START_GAME, { isStarted: isGameReadyToStart });
@@ -180,60 +159,59 @@ class Game {
         if (playerInput.keyRestrictLight) {
             player.visionAngle -= 1 * Math.PI / 180;
         }
-<<<<<<< HEAD
         if (player.visionAngle > 2 * Math.PI - 0.000001) {
             player.visionAngle = 2 * Math.PI - 0.000001;
         }
         if (player.visionAngle < 0) {
             player.visionAngle = 0;
         }
-        var diffX = playerInput.mouseX - player.position.x;
-        var diffY = playerInput.mouseY - player.position.y;
+        const diffX = playerInput.mouseX - player.position.x;
+        const diffY = playerInput.mouseY - player.position.y;
         player.visionDirection = Math.atan2(diffY, diffX);
-        var returnValue = this.handleMovement(player.position.x, player.position.y, nextPointX, nextPointY);
+        const returnValue = this.handleMovement(player.position.x, player.position.y, nextPointX, nextPointY);
         player.position.x = returnValue[0];
         player.position.y = returnValue[1];
-    };
-    Game.prototype.calculateRayPolygon = function (circleX, circleY, flashlightDirection, flashlightAngle, isFlashlight) {
-        var lowerRayBounds = this.boundAngle(flashlightDirection - flashlightAngle / 2);
-        var upperRayBounds = this.boundAngle(flashlightDirection + flashlightAngle / 2);
-        var rayAngleQueue = priority_queue_1.priorityQueue();
+    }
+    calculateRayPolygon(circleX, circleY, flashlightDirection, flashlightAngle, isFlashlight) {
+        let lowerRayBounds = this.boundAngle(flashlightDirection - flashlightAngle / 2);
+        let upperRayBounds = this.boundAngle(flashlightDirection + flashlightAngle / 2);
+        let rayAngleQueue = priority_queue_1.priorityQueue();
         if (isFlashlight) {
-            var lowerX = circleX + Math.cos(lowerRayBounds) * 50;
-            var lowerY = circleY + Math.sin(lowerRayBounds) * 50;
-            var upperX = circleX + Math.cos(upperRayBounds) * 50;
-            var upperY = circleY + Math.sin(upperRayBounds) * 50;
+            let lowerX = circleX + Math.cos(lowerRayBounds) * 50;
+            let lowerY = circleY + Math.sin(lowerRayBounds) * 50;
+            let upperX = circleX + Math.cos(upperRayBounds) * 50;
+            let upperY = circleY + Math.sin(upperRayBounds) * 50;
             rayAngleQueue.insert({ angle: lowerRayBounds, x: lowerX, y: lowerY }, lowerRayBounds);
             rayAngleQueue.insert({ angle: upperRayBounds, x: upperX, y: upperY }, upperRayBounds);
         }
-        for (var outerIndex = 0; outerIndex < this.map.numPoints; ++outerIndex) {
-            var currentPoint = this.map.allPoints[outerIndex];
-            var diffX = currentPoint.x - circleX;
-            var diffY = currentPoint.y - circleY;
-            var rayAngle = Math.atan2(diffY, diffX);
-            var beforeAngle = this.boundAngle(rayAngle - 0.00001);
-            var afterAngle = this.boundAngle(rayAngle + 0.00001);
-            var normalBounds = (lowerRayBounds < rayAngle && upperRayBounds > rayAngle);
-            var reversedBounds = (lowerRayBounds > upperRayBounds) && ((-Math.PI < rayAngle && upperRayBounds > rayAngle) || (lowerRayBounds < rayAngle && Math.PI > rayAngle));
+        for (let outerIndex = 0; outerIndex < this.map.numPoints; ++outerIndex) {
+            const currentPoint = this.map.allPoints[outerIndex];
+            const diffX = currentPoint.x - circleX;
+            const diffY = currentPoint.y - circleY;
+            const rayAngle = Math.atan2(diffY, diffX);
+            let beforeAngle = this.boundAngle(rayAngle - 0.00001);
+            let afterAngle = this.boundAngle(rayAngle + 0.00001);
+            const normalBounds = (lowerRayBounds < rayAngle && upperRayBounds > rayAngle);
+            const reversedBounds = (lowerRayBounds > upperRayBounds) && ((-Math.PI < rayAngle && upperRayBounds > rayAngle) || (lowerRayBounds < rayAngle && Math.PI > rayAngle));
             if (!isFlashlight || reversedBounds || normalBounds) {
                 rayAngleQueue.insert({ angle: beforeAngle, x: currentPoint.x, y: currentPoint.y }, beforeAngle);
                 rayAngleQueue.insert({ angle: rayAngle, x: currentPoint.x, y: currentPoint.y }, rayAngle);
                 rayAngleQueue.insert({ angle: afterAngle, x: currentPoint.x, y: currentPoint.y }, afterAngle);
             }
         }
-        var visionQueue = priority_queue_1.priorityQueue();
-        var rayAngleLength = rayAngleQueue.size();
-        for (var outerIndex = 0; outerIndex < rayAngleLength; ++outerIndex) {
-            var _a = rayAngleQueue.pop(), angle = _a.angle, x = _a.x, y = _a.y;
-            var rayAngle = angle;
-            var raySlope = Math.tan(rayAngle);
-            var rayYIntercept = -(raySlope) * circleX + circleY;
-            var currentCollisionDistance = 100000000000;
-            var bestCollisionSoFar = { x: -1, y: -1 };
-            for (var innerIndex = 0; innerIndex < this.map.numEdges; ++innerIndex) {
-                var currentEdge = this.map.allEdges[innerIndex];
-                var collisionX = void 0;
-                var collisionY = void 0;
+        let visionQueue = priority_queue_1.priorityQueue();
+        let rayAngleLength = rayAngleQueue.size();
+        for (let outerIndex = 0; outerIndex < rayAngleLength; ++outerIndex) {
+            const { angle, x, y } = rayAngleQueue.pop();
+            const rayAngle = angle;
+            const raySlope = Math.tan(rayAngle);
+            const rayYIntercept = -(raySlope) * circleX + circleY;
+            let currentCollisionDistance = 100000000000;
+            let bestCollisionSoFar = { x: -1, y: -1 };
+            for (let innerIndex = 0; innerIndex < this.map.numEdges; ++innerIndex) {
+                const currentEdge = this.map.allEdges[innerIndex];
+                let collisionX;
+                let collisionY;
                 if (currentEdge.slope == null || currentEdge.slope == Infinity || currentEdge.slope == -Infinity) {
                     collisionX = currentEdge.minX;
                     collisionY = raySlope * collisionX + rayYIntercept;
@@ -244,8 +222,8 @@ class Game {
                 }
                 if (collisionX <= currentEdge.maxX + 0.00001 && collisionX >= currentEdge.minX - 0.00001 &&
                     collisionY <= currentEdge.maxY + 0.00001 && collisionY >= currentEdge.minY - 0.00001) {
-                    var distanceToLightOrigin = Math.sqrt(Math.pow(collisionX - circleX, 2) + Math.pow(collisionY - circleY, 2));
-                    var angleToLight = Math.atan2(collisionY - circleY, collisionX - circleX);
+                    const distanceToLightOrigin = Math.sqrt(Math.pow(collisionX - circleX, 2) + Math.pow(collisionY - circleY, 2));
+                    const angleToLight = Math.atan2(collisionY - circleY, collisionX - circleX);
                     if (distanceToLightOrigin < currentCollisionDistance &&
                         ((angleToLight < rayAngle + 0.001 && angleToLight > rayAngle - 0.001))) {
                         bestCollisionSoFar = { x: collisionX, y: collisionY };
@@ -256,29 +234,29 @@ class Game {
             visionQueue.insert(bestCollisionSoFar, rayAngle);
         }
         if (isFlashlight) {
-            var joinAngle = this.boundAngle(flashlightDirection + Math.PI);
+            let joinAngle = this.boundAngle(flashlightDirection + Math.PI);
             visionQueue.insert({ x: circleX, y: circleY }, joinAngle);
         }
-        var finalPointOrder = [];
+        let finalPointOrder = [];
         while (visionQueue.peek() != null) {
-            var nextPoint = visionQueue.pop();
-            var pointX = nextPoint.x;
-            var pointY = nextPoint.y;
+            const nextPoint = visionQueue.pop();
+            const pointX = nextPoint.x;
+            const pointY = nextPoint.y;
             finalPointOrder.push(pointX, pointY);
         }
         return finalPointOrder;
-    };
-    Game.prototype.lightPointOrderContains = function (lightPointOrder, x, y) {
+    }
+    lightPointOrderContains(lightPointOrder, x, y) {
         var inside = false;
-        var numEntires = lightPointOrder.length;
+        const numEntires = lightPointOrder.length;
         if (numEntires % 2 != 0) {
             throw new Error("Odd number of points");
         }
         if (numEntires / 2 < 3) {
             throw new Error("Not enough points to create polygon");
         }
-        var jx = lightPointOrder[numEntires - 2];
-        var jy = lightPointOrder[numEntires - 1];
+        let jx = lightPointOrder[numEntires - 2];
+        let jy = lightPointOrder[numEntires - 1];
         for (var i = 0; i < numEntires; i += 2) {
             var ix = lightPointOrder[i];
             var iy = lightPointOrder[i + 1];
@@ -289,13 +267,12 @@ class Game {
             jy = iy;
         }
         return inside;
-    };
-    Game.prototype.checkIfLightContainsPlayer = function () {
-        var _this = this;
-        var lightPointOrder = this.calculateRayPolygon(this.lightPlayer.position.x, this.lightPlayer.position.y, this.lightPlayer.visionDirection, this.lightPlayer.visionAngle, true);
-        this.players.forEach(function (player, key) {
-            if (_this.lightPlayer.id !== player.id) {
-                if (_this.lightPointOrderContains(lightPointOrder, player.position.x, player.position.y)) {
+    }
+    checkIfLightContainsPlayer() {
+        const lightPointOrder = this.calculateRayPolygon(this.lightPlayer.position.x, this.lightPlayer.position.y, this.lightPlayer.visionDirection, this.lightPlayer.visionAngle, true);
+        this.players.forEach((player, key) => {
+            if (this.lightPlayer.id !== player.id) {
+                if (this.lightPointOrderContains(lightPointOrder, player.position.x, player.position.y)) {
                     if (player.hp > 0) {
                         player.hp -= 1;
                     }
@@ -306,36 +283,15 @@ class Game {
             else {
             }
         });
-    };
-    Game.prototype.update = function () {
-        var now = Date.now();
-        var dt = (now - this.lastUpdateTime) / 1000;
-        this.lastUpdateTime = now;
-        if (this.lightPlayer) {
-            this.checkIfLightContainsPlayer();
-        }
-        this.players.forEach(function (player, id) {
-=======
-        const diffX = playerInput.mouseX - player.position.x;
-        const diffY = playerInput.mouseY - player.position.y;
-        player.visionDirection = Math.atan2(diffY, diffX);
-        console.log(`${socket.id} -> ${diffX}, ${diffY}, ${player.visionDirection * 180 / Math.PI}`);
-        const returnValue = this.handleMovement(player.position.x, player.position.y, nextPointX, nextPointY);
-        player.position.x = returnValue[0];
-        player.position.y = returnValue[1];
-    }
-    handlePlayerKeyboardInput() {
     }
     update() {
         const now = Date.now();
         const dt = (now - this.lastUpdateTime) / 1000;
         this.lastUpdateTime = now;
+        if (this.lightPlayer) {
+            this.checkIfLightContainsPlayer();
+        }
         this.players.forEach((player, id) => {
-            if (player.hp <= 0) {
-                player.socket.emit(constants_1.Constants.MSG_TYPES_GAME_OVER);
-                this.players.delete(id);
-            }
->>>>>>> 08af4cbea18dde007b6a2dbdd43d4f8aac843e97
         });
         const playerArray = Encoder.encodeUpdate(this.players);
         this.players.forEach(player => {

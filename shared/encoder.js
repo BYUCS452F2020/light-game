@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.decodeInput = exports.encodeInput = exports.decodeUpdate = exports.encodeUpdate = void 0;
-exports.encodeUpdate = function (players) {
-    var playersLength = players.size;
-    var arr = new Uint16Array(1 + playersLength * 6);
+exports.encodeUpdate = (players) => {
+    const playersLength = players.size;
+    let arr = new Uint16Array(1 + playersLength * 6);
     arr[0] = playersLength;
     let i = 1;
     players.forEach((value, key) => {
@@ -17,11 +17,11 @@ exports.encodeUpdate = function (players) {
     });
     return arr;
 };
-exports.decodeUpdate = function (encodedArr) {
+exports.decodeUpdate = (encodedArr) => {
     let players = [];
     const numPlayers = encodedArr[0];
     let playerNumber = 0;
-    for (var i = 1; playerNumber < numPlayers; i += 6, playerNumber += 1) {
+    for (let i = 1; playerNumber < numPlayers; i += 6, playerNumber += 1) {
         let player = {};
         player['id'] = encodedArr[i];
         player['x'] = encodedArr[i + 1];
