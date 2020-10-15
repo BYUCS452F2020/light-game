@@ -37,18 +37,24 @@ class Game {
         });
         return playerArray;
     }
-    start(socket, params) {
+    start() {
         const isGameReadyToStart = (this.players ? this.players.size > 1 : false) && this.map.isGameMapGenerated;
         let [_, lightPlayer] = Array.from(this.players)[domain_1.getRandomInt(this.players.size)];
         this.lightPlayer = lightPlayer;
         const jsonMap = JSON.stringify(this.map);
+        let waitingTimer = 0;
+        while (!isGameReadyToStart) {
+            ++waitingTimer;
+            if (waitingTimer > 10000) {
+                console.log("START GAME FAILURE");
+                this.players.forEach(player => {
+                    player.socket.emit(constants_1.Constants.MSG_TYPES_START_GAME + "_FAILURE");
+                });
+                return;
+            }
+        }
         this.players.forEach(player => {
-            if (isGameReadyToStart) {
-                player.socket.emit(constants_1.Constants.MSG_TYPES_START_GAME, { isStarted: isGameReadyToStart, map: jsonMap, players: this.generatePlayerArray(), lightPlayerIds: `[${this.lightPlayer.id}, -1]` });
-            }
-            else {
-                player.socket.emit(constants_1.Constants.MSG_TYPES_START_GAME, { isStarted: isGameReadyToStart });
-            }
+            player.socket.emit(constants_1.Constants.MSG_TYPES_START_GAME + "_SUCCESS", { map: jsonMap, players: this.generatePlayerArray(), lightPlayerIds: `[${this.lightPlayer.id}, -1]` });
         });
     }
     addPlayer(socket, username) {
@@ -136,7 +142,7 @@ class Game {
     handleMovementInput(socket, encodedMessage) {
         const player = this.players.get(socket.id);
         if (!player) {
-            return;
+            throw new Error();
         }
         let playerInput = Encoder.decodeInput(encodedMessage);
         let nextPointX = player.position.x;

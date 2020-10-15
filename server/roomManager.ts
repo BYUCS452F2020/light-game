@@ -12,7 +12,9 @@ export class RoomManager {
     }
 
     joinRoom(roomId:string, socket:Socket, username:string) {
+        console.log(`PLAYER JOINED ROOM: ${socket.id}, ${username}, ${roomId}`)
         let room = this.rooms.get(roomId)
+        // TODO: Error checking on room not existing yet
         const player = new Player(username, room.length, socket, null, null, null)
         room.push(player)
         this.rooms.set(roomId, room)
@@ -21,11 +23,14 @@ export class RoomManager {
     createRoom(socket:Socket, username:string) {
         const player = new Player(username, 1, socket, null, null, null)
         const roomId = uuid().substring(0,4)
+        console.log(`PLAYER CREATED ROOM: ${socket.id}, ${username}, ${roomId}`)
         this.rooms.set(roomId,[player])
         return roomId
     }
 
     startRoom(roomId:string) {
+
+        console.log(`STARTED ROOM: ${roomId}`)
         const game = new Game()
         const players:Player[]  = this.rooms.get(roomId)
 
@@ -35,9 +40,9 @@ export class RoomManager {
         players.forEach(player => {
             game.addPlayer(player.socket, player.username)
         });
-        players.forEach(player => {
-            game.start(player.socket, {})
-        });
+        // When a game is started all of it's players get notified
+        game.start();
+
         this.rooms.delete(roomId)
         return game
 

@@ -12,6 +12,7 @@ class RoomManager {
         this.rooms = new Map();
     }
     joinRoom(roomId, socket, username) {
+        console.log(`PLAYER JOINED ROOM: ${socket.id}, ${username}, ${roomId}`);
         let room = this.rooms.get(roomId);
         const player = new domain_1.Player(username, room.length, socket, null, null, null);
         room.push(player);
@@ -20,18 +21,18 @@ class RoomManager {
     createRoom(socket, username) {
         const player = new domain_1.Player(username, 1, socket, null, null, null);
         const roomId = uuid_1.v4().substring(0, 4);
+        console.log(`PLAYER CREATED ROOM: ${socket.id}, ${username}, ${roomId}`);
         this.rooms.set(roomId, [player]);
         return roomId;
     }
     startRoom(roomId) {
+        console.log(`STARTED ROOM: ${roomId}`);
         const game = new game_1.default();
         const players = this.rooms.get(roomId);
         players.forEach(player => {
             game.addPlayer(player.socket, player.username);
         });
-        players.forEach(player => {
-            game.start(player.socket, {});
-        });
+        game.start();
         this.rooms.delete(roomId);
         return game;
     }

@@ -39,7 +39,8 @@ export class GameState extends Phaser.Scene {
   circleX: number = 200;
   circleY: number = 290;
   playerId: number = -1; // Used to detect which player information is this person's
-  circleUsername: string = "Test-UserName-" + Math.floor(Math.random() * 1000); // TODO: Not always unique
+  playerUsername: string = null;
+  roomId: string = null;
 
   players: {id: number, x: number, y:number, visionDirection: number, visionAngle: number, hp: number}[]
   lightPlayerIds: number[]
@@ -67,84 +68,30 @@ export class GameState extends Phaser.Scene {
 
     constructor(config: string | Phaser.Types.Scenes.SettingsConfig) {
       // TODO: Not sure how else this phaser scene is supposed to be created
-      super('room')
+      super('game')
+    }
+
+    init(data) {
+      // TODO: Get initial player x/y information from game server?
+      console.log('init GAME', data);
+      this.socketClient = data.socketClient;
+      this.playerId = data.playerId;
+      this.playerUsername = data.playerUsername;
+      this.roomId = data.roomId;
+      this.lightPlayerIds = data.lightPlayerIds
+      GameState.roomWidth = data.height;
+      GameState.roomHeight = data.width;
+      this.numEdges = data.numEdges
+      this.numPoints = data.numPoints
+      this.numPolygons = data.numPolygons
+      this.allEdges = data.allEdges
+      this.allPoints = data.allPoints
+      this.allPolygons = data.allPolygons
     }
 
     preload() {
-      this.socketClient = ioclient(process.env.SERVER_HOST);
-      this.socketClient.emit(Constants.MSG_TYPES_JOIN_GAME, this.circleUsername);
-      this.socketClient.on(Constants.MSG_TYPES_START_GAME, (startGameObject: object) => {
-        console.log("START GAME!")
-        console.log(startGameObject)
-        const isGameStarted = JSON.parse(startGameObject['isStarted'])
-        if (isGameStarted) {
-          const gameMap = JSON.parse(startGameObject['map'])
-          const lightPlayerIds = JSON.parse(startGameObject['lightPlayerIds'])
-
-          this.lightPlayerIds = lightPlayerIds;
-          console.log(lightPlayerIds);
-          // this.isLightPlayer = this.lightPlayerIds.includes(this.playerId);
-          // Include's extra metadata about each player that we do not need to store (but could be useful later on [leaderboards])
-          // const players = JSON.parse(startGameObject['map'])
-
-          
-          // this.players = players
-
-          // console.log(isGameStarted)
-          // console.log(gameMap)
-          // TODO: Test on different sized monitors that have higher pixel densities than others.
-          // Thus, rooms either
-          // - need to be based on a large minimum fixed size
-          // - need to zoom in for large screens
-  
-          // const polygons = gameMap["obstacles"]
-  
-          // Get game room information from server
-          GameState.roomWidth = gameMap["height"];
-          GameState.roomHeight = gameMap["width"];
-          this.numEdges = gameMap['numEdges']
-          this.numPoints = gameMap['numPoints']
-          this.numPolygons = gameMap['numPolygons']
-          this.allEdges = gameMap['allEdges']
-          this.allPoints = gameMap['allPoints']
-          this.allPolygons = gameMap['allPolygons']
-        }
-      })
-      this.socketClient.on(Constants.MSG_TYPES_JOIN_GAME, (args: object) => {
-        console.log("JOIN GAME!");
-        this.circleX = args['x'];
-        this.circleY = args['y'];
-        this.playerId = args['id'];
-        console.log(args)
-
-        // Attempt to start a game once joined
-        this.socketClient.emit(Constants.MSG_TYPES_START_GAME);
-      })
       this.socketClient.on(Constants.MSG_TYPES_GAME_UPDATE, (encodedPlayers: Uint16Array) => {
         this.players = Encoder.decodeUpdate(encodedPlayers);
-
-        // console.log(this.players)
-        
-        // Make sure we update each player correctly
-        // let numPlayers = this.players.length;
-
-        // for (let index = 0; index < numPlayers; ++index) {
-        //   const currentPlayer = this.players[index];
-        //   if (currentPlayer.id == this.playerId) {
-        //     this.circleX = currentPlayer['x']
-        //     this.circleY = currentPlayer['y']
-        //     this.flashlightDirection = currentPlayer['d']
-        //     this.flashlightAngle = currentPlayer['a']
-        //     this.flashlightHealth = currentPlayer['hp']
-        //   } else {
-        //     this.hiddenX = currentPlayer['x'] // TODO: Modify to include more than 2 players
-        //     this.hiddenY = currentPlayer['y']
-        //     this.hiddenDirection = currentPlayer['d']
-        //     this.hiddenAngle = currentPlayer['a']
-        //     this.hidden_player_health = currentPlayer['hp']
-        //   }
-        // }
-        
       })
       // this.load.setBaseURL('http://labs.phaser.io')
       // this.load.image('sky', 'assets/skies/space3.png')
@@ -195,6 +142,7 @@ export class GameState extends Phaser.Scene {
     this.previousMouseX = this.mouse.x;
     this.previousMouseY = this.mouse.y;
     this.socketClient.emit(Constants.MSG_TYPES_INPUT,
+      {roomId: this.roomId, encodedMessage:
         Encoder.encodeInput(this.mouse.x, 
           this.mouse.y, 
           this.keyUP.isDown, 
@@ -203,12 +151,9 @@ export class GameState extends Phaser.Scene {
           this.keyRIGHT.isDown,
           this.keyExpandLight.isDown,
           this.keyRestrictLight.isDown)
+        }
       );
   }
-
-  // Whether the hidden player was caught in the light the last frame
-  was_hidden_player_caught: boolean = false;
-  hidden_player_health: number = 100; // How many health points the hidden player has to survive against the light
 
   calculateRayPolygon(circleX: number, circleY: number, flashlightDirection: number, flashlightAngle: number, isFlashlight: boolean) {
 
@@ -324,10 +269,6 @@ export class GameState extends Phaser.Scene {
       const pointX = nextPoint.x
       const pointY = nextPoint.y
       finalPointOrder.push(pointX, pointY)
-      // console.log(`BEST: (${pointX},${pointY})`)
-      // const circle2: Phaser.Geom.Circle = new Phaser.Geom.Circle(pointX, pointY, 5);
-      // graphics.fillStyle(0x000000)
-      // graphics.fillCircleShape(circle2);
     }
 
     return finalPointOrder;

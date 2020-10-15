@@ -8,23 +8,49 @@ const express_1 = __importDefault(require("express"));
 const path_1 = __importDefault(require("path"));
 const socket_io_1 = __importDefault(require("socket.io"));
 const constants_1 = require("../shared/constants");
-const game_1 = __importDefault(require("./game"));
 const roomManager_1 = require("./roomManager");
 class Server {
     constructor() {
+        this.games = new Map();
         this.run = () => {
             const port = process.env.PORT || 3000;
             const server = this.app.listen(port);
             console.log(`Server listening on port ${port}`);
             const io = socket_io_1.default(server);
-            const game = new game_1.default();
             io.on('connection', (socket) => {
                 console.log('Player connected!', socket.id);
-                socket.on(constants_1.Constants.JOIN_ROOM, (roomId, username) => this.roomManager.joinRoom(roomId, socket, username));
-                socket.on(constants_1.Constants.CREATE_ROOM, (username) => this.roomManager.createRoom(socket, username));
-                socket.on(constants_1.Constants.MSG_TYPES_START_GAME, (roomId) => { this.games.set(roomId, this.roomManager.startRoom(roomId)); });
-                socket.on(constants_1.Constants.MSG_TYPES_INPUT, (encodedMessage) => game.handleMovementInput(socket, encodedMessage));
-                socket.on('disconnect', () => game.players.delete(socket.id));
+                var gameForThisSocket = null;
+                socket.on(constants_1.Constants.JOIN_ROOM, (data) => {
+                    console.log(`ATTEMPTING TO JOIN ROOM:`);
+                    console.log(data);
+                    const roomId = data['roomId'];
+                    const username = data['username'];
+                    this.roomManager.joinRoom(roomId, socket, username);
+                    socket.emit(constants_1.Constants.JOIN_ROOM + "_SUCCESS", roomId);
+                });
+                socket.on(constants_1.Constants.CREATE_ROOM, (username) => {
+                    const roomId = this.roomManager.createRoom(socket, username);
+                    socket.emit(constants_1.Constants.CREATE_ROOM + "_SUCCESS", roomId);
+                });
+                socket.on(constants_1.Constants.MSG_TYPES_START_GAME, (roomId) => {
+                    this.games.set(roomId, this.roomManager.startRoom(roomId));
+                    gameForThisSocket = this.games.get(roomId);
+                });
+                socket.on(constants_1.Constants.MSG_TYPES_INPUT, (data) => {
+                    if (gameForThisSocket) {
+                        const encodedMessage = data['encodedMessage'];
+                        gameForThisSocket.handleMovementInput(socket, encodedMessage);
+                    }
+                    else {
+                        const roomId = data['roomId'];
+                        gameForThisSocket = this.games.get(roomId);
+                    }
+                });
+                socket.on('disconnect', () => {
+                    if (gameForThisSocket) {
+                        gameForThisSocket.players.delete(socket.id);
+                    }
+                });
             });
         };
         this.roomManager = new roomManager_1.RoomManager();

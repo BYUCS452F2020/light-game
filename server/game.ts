@@ -28,7 +28,7 @@ export default class Game {
     return playerArray;
   }
 
-  start(socket: Socket, params: any) {
+  start() {
     // Needs at least 2 players and the game map ready to send
     const isGameReadyToStart = (this.players ? this.players.size > 1 : false) && this.map.isGameMapGenerated
 
@@ -44,16 +44,25 @@ export default class Game {
     // console.log(this.players.values())
 
     const jsonMap = JSON.stringify(this.map)
-    this.players.forEach(player => {
-      // TODO: Better handle when game map generation is slow
-      // TODO: Current game map returns 30 points for 11 edges. Find out why
-      if (isGameReadyToStart) {
-        player.socket.emit(Constants.MSG_TYPES_START_GAME, { isStarted: isGameReadyToStart, map: jsonMap, players: this.generatePlayerArray(), lightPlayerIds: `[${this.lightPlayer.id}, -1]` })
-      } else {
-        player.socket.emit(Constants.MSG_TYPES_START_GAME, { isStarted: isGameReadyToStart })
-      }
-    })
 
+    // TODO: Better handle when game map generation is slow
+    // TODO: Current game map returns 30 points for 11 edges. Find out why
+    let waitingTimer = 0;
+    while (!isGameReadyToStart) {
+      ++waitingTimer;
+      // TODO: The "isGameReadyToStart" value can fail because there is only 1 person in the room OR the game cached information isn't ready to send
+      if (waitingTimer > 10000) {
+        console.log("START GAME FAILURE")
+        this.players.forEach(player => {
+          player.socket.emit(Constants.MSG_TYPES_START_GAME + "_FAILURE")
+        })
+        return;
+      }
+    }
+
+    this.players.forEach(player => {
+      player.socket.emit(Constants.MSG_TYPES_START_GAME + "_SUCCESS", {map: jsonMap, players: this.generatePlayerArray(), lightPlayerIds: `[${this.lightPlayer.id}, -1]` })
+    })
   }
 
   addPlayer(socket: Socket, username: string) {
@@ -175,19 +184,11 @@ export default class Game {
     // console.log("HANDLE MOVEMENT INPUT 1")
     const player = this.players.get(socket.id)
     if (!player) {
-      return
-      // Sometimes players will try to address movement before they are registered, so comment this out for now
-      //throw new Error()
+      // Assuming players cannot try to address movement before they are registered, throw an error if they try to
+      throw new Error()
     }
 
-    // console.log(`HANDLE MOVEMENT INPUT: ${player.position.x}, ${player.position.y}`)
     let playerInput = Encoder.decodeInput(encodedMessage)
-    // console.log(playerInput)
-   
-    // let nextPointX = nextPosition.x;
-    // let nextPointY = nextPosition.y;
-
-    // decodeInput(encodedMessage)
     let nextPointX = player.position.x;
     let nextPointY = player.position.y;
 

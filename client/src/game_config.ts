@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser'
 import { GameState } from './game_state'
 import { TitleScene } from './title'
+import { RoomScene } from './room'
 
 export class GameConfig {
     config: Phaser.Types.Core.GameConfig;
@@ -14,6 +15,7 @@ export class GameConfig {
           width: window.outerWidth,
           height: window.outerHeight,
           scale: {
+            parent: 'doesnt exist', // NOTE: This line is needed in order to use the "dom" attribute to have input text boxes
             mode: Phaser.Scale.FIT,
             autoCenter: Phaser.Scale.CENTER_BOTH
           },
@@ -23,7 +25,10 @@ export class GameConfig {
               gravity: { y: 200 },
             },
           },
-          scene: [TitleScene, scene]
+          dom: {
+            createContainer: true
+          },
+          scene: [TitleScene, RoomScene, scene]
       }
     }
 

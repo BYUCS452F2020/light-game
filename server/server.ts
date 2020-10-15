@@ -19,7 +19,7 @@ export class Server {
 
   app:Application
   roomManager:RoomManager
-  games: Map<string, Game>
+  games: Map<string, Game> = new Map();
 
  constructor() {
    this.roomManager = new RoomManager()
@@ -42,21 +42,54 @@ export class Server {
   
   // Setup socket.io
   const io = socketio(server);
-  const game: Game = new Game();
   
   // Listen for socket.io connections
   io.on('connection', (socket: Socket) => {
     console.log('Player connected!', socket.id);
   
+    // This socket will be associated with one game at a time
+    var gameForThisSocket: Game = null;
 
-    socket.on(Constants.JOIN_ROOM, (roomId:string, username: string) => this.roomManager.joinRoom(roomId,socket, username));
-    socket.on(Constants.CREATE_ROOM, (username: string) => this.roomManager.createRoom(socket, username));
-    socket.on(Constants.MSG_TYPES_START_GAME, (roomId: string) => {this.games.set(roomId, this.roomManager.startRoom(roomId))});
+    // object consists of {roomId: string, username: string}
+    socket.on(Constants.JOIN_ROOM, (data: object) => {
+      console.log(`ATTEMPTING TO JOIN ROOM:`)
+      console.log(data)
+      const roomId = data['roomId']
+      const username = data['username']
+      this.roomManager.joinRoom(roomId ,socket, username)
+      socket.emit(Constants.JOIN_ROOM + "_SUCCESS", roomId);
+    });
+
+    socket.on(Constants.CREATE_ROOM, (username: string) => {
+      const roomId = this.roomManager.createRoom(socket, username);
+      socket.emit(Constants.CREATE_ROOM + "_SUCCESS", roomId);
+    });
+
+    socket.on(Constants.MSG_TYPES_START_GAME, (roomId: string) => {
+      this.games.set(roomId, this.roomManager.startRoom(roomId))
+      // TODO: Game for this socket is only set for the person who starts the game
+      gameForThisSocket = this.games.get(roomId)
+    });
+
     // This next line needs a game id
-    socket.on(Constants.MSG_TYPES_INPUT, (encodedMessage: Uint16Array) => game.handleMovementInput(socket, encodedMessage));
-    socket.on('disconnect', () => game.players.delete(socket.id));
+    socket.on(Constants.MSG_TYPES_INPUT, (data: object) => {
+      if (gameForThisSocket) {
+        const encodedMessage: Uint16Array = data['encodedMessage']
+        gameForThisSocket.handleMovementInput(socket, encodedMessage)
+      } else {
+        const roomId = data['roomId']
+        // Creates cached version of the game object to access later
+        gameForThisSocket = this.games.get(roomId)
+        // TODO: Send error response that input was not recognized for a game hadn't joined
+      }
+    });
+    socket.on('disconnect', () => {
+      if (gameForThisSocket) {
+        gameForThisSocket.players.delete(socket.id);
+      }
+    });
   });
- }
+  }
   
 
 
