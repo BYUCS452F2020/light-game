@@ -14,6 +14,7 @@ export class TitleScene extends Phaser.Scene {
 
     constructor(config: string | Phaser.Types.Scenes.SettingsConfig) {
         super('title')
+        console.log("STARTED TITLE")
         this.socketClient = ioclient(process.env.SERVER_HOST);
     }
 
@@ -66,28 +67,33 @@ export class TitleScene extends Phaser.Scene {
             // this.joinRoomButton.x = (displaySize['width'] / 2) - 45;
             // this.joinRoomButton.y = (displaySize['height'] / 2) + 100;
         });
+
+        // SocketClient persists throughout the entire time the player is on the website, so we only create these listeners once per session
+        if (!this.socketClient.hasListeners(Constants.ROOM_CREATED)) {
+            this.socketClient.on(Constants.ROOM_CREATED, (roomId: string) => {
+                // Join the loading room if successful
+                console.log(`CREATING WAITING ROOM for ${roomId}`)
+                this.scene.start('room', {playerUsername: this.playerUsername, roomId, socketClient: this.socketClient});
+            })
+
+            this.socketClient.on(Constants.JOIN_ROOM_SUCCESS, (roomId: string) => {
+                // Join the loading room if successful
+                console.log(`LOADING WAITING ROOM for ${roomId}`)
+                this.scene.start('room', {playerUsername: this.playerUsername, roomId, socketClient: this.socketClient});
+            })
+            this.socketClient.on(Constants.JOIN_ROOM_FAIL, () => {
+                console.log("Failed to join room");
+            })
+        }
     }
     
     startRoom() {
         this.socketClient.emit(Constants.CREATE_ROOM, this.playerUsername);
-        this.socketClient.on(Constants.ROOM_CREATED, (roomId: string) => {
-            // Join the loading room if successful
-            console.log(`CREATING WAITING ROOM for ${roomId}`)
-            this.scene.start('room', {playerUsername: this.playerUsername, roomId, socketClient: this.socketClient});
-        })
     }
 
     joinRoom(roomId) {
         // TODO: Verify roomid before launching the room scene
         this.socketClient.emit(Constants.JOIN_ROOM, {roomId, username: this.playerUsername});
-        this.socketClient.on(Constants.JOIN_ROOM_SUCCESS, (roomId: string) => {
-            // Join the loading room if successful
-            console.log(`LOADING WAITING ROOM for ${roomId}`)
-            this.scene.start('room', {playerUsername: this.playerUsername, roomId, socketClient: this.socketClient});
-        })
-        this.socketClient.on(Constants.JOIN_ROOM_FAIL, () => {
-            console.log("Failed to join room", roomId);
-        })
     }
 
     upload() {

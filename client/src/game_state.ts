@@ -90,9 +90,12 @@ export class GameState extends Phaser.Scene {
     }
 
     preload() {
-      this.socketClient.on(Constants.MSG_TYPES_GAME_UPDATE, (encodedPlayers: Uint16Array) => {
-        this.players = Encoder.decodeUpdate(encodedPlayers);
-      })
+      // Only add a listener if it doesn't exist yet
+      if (!this.socketClient.hasListeners(Constants.MSG_TYPES_GAME_UPDATE)) {
+        this.socketClient.on(Constants.MSG_TYPES_GAME_UPDATE, (encodedPlayers: Uint16Array) => {
+          this.players = Encoder.decodeUpdate(encodedPlayers);
+        })
+      }
       // this.load.setBaseURL('http://labs.phaser.io')
       // this.load.image('sky', 'assets/skies/space3.png')
       // this.load.image('logo', 'assets/sprites/phaser3-logo.png')

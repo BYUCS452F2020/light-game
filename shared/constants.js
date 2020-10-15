@@ -13,4 +13,7 @@ var Constants;
     Constants["JOIN_ROOM_FAIL"] = "join_room_fail";
     Constants["CREATE_ROOM"] = "create_room";
     Constants["ROOM_CREATED"] = "room_created";
+    Constants["LEAVE_ROOM"] = "leave_room";
+    Constants["LEAVE_ROOM_SUCCESS"] = "leave_room_suc";
+    Constants["ROOM_WAITING_PLAYERS_RESPONSE"] = "room_waiting_players_response";
 })(Constants = exports.Constants || (exports.Constants = {}));

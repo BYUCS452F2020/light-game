@@ -53,16 +53,19 @@ export class Server {
     // object consists of {roomId: string, username: string}
     socket.on(Constants.JOIN_ROOM, (data: object) => {
       console.log(`ATTEMPTING TO JOIN ROOM:`)
-      console.log(data)
       const roomId = data['roomId']
       const username = data['username']
-      this.roomManager.joinRoom(roomId ,socket, username)
-      socket.emit(Constants.JOIN_ROOM + "_SUCCESS", roomId);
+      this.roomManager.joinRoom(roomId ,socket, username);
     });
 
     socket.on(Constants.CREATE_ROOM, (username: string) => {
-      const roomId = this.roomManager.createRoom(socket, username);
-      socket.emit(Constants.CREATE_ROOM + "_SUCCESS", roomId);
+      this.roomManager.createRoom(socket, username);
+    });
+
+    socket.on(Constants.LEAVE_ROOM, (data: object) => {
+      const roomId = data['roomId']
+      const username = data['username']
+      this.roomManager.leaveRoom(socket, roomId, username);
     });
 
     socket.on(Constants.MSG_TYPES_START_GAME, (roomId: string) => {

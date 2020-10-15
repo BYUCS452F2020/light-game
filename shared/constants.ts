@@ -9,4 +9,7 @@ export enum Constants {
   JOIN_ROOM_FAIL = 'join_room_fail',
   CREATE_ROOM = 'create_room',
   ROOM_CREATED = 'room_created',
+  LEAVE_ROOM = 'leave_room',
+  LEAVE_ROOM_SUCCESS = 'leave_room_suc',
+  ROOM_WAITING_PLAYERS_RESPONSE = 'room_waiting_players_response', // Response containing players' usernames in the current room
 }

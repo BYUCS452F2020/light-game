@@ -22,15 +22,17 @@ class Server {
                 var gameForThisSocket = null;
                 socket.on(constants_1.Constants.JOIN_ROOM, (data) => {
                     console.log(`ATTEMPTING TO JOIN ROOM:`);
-                    console.log(data);
                     const roomId = data['roomId'];
                     const username = data['username'];
                     this.roomManager.joinRoom(roomId, socket, username);
-                    socket.emit(constants_1.Constants.JOIN_ROOM + "_SUCCESS", roomId);
                 });
                 socket.on(constants_1.Constants.CREATE_ROOM, (username) => {
-                    const roomId = this.roomManager.createRoom(socket, username);
-                    socket.emit(constants_1.Constants.CREATE_ROOM + "_SUCCESS", roomId);
+                    this.roomManager.createRoom(socket, username);
+                });
+                socket.on(constants_1.Constants.LEAVE_ROOM, (data) => {
+                    const roomId = data['roomId'];
+                    const username = data['username'];
+                    this.roomManager.leaveRoom(socket, roomId, username);
                 });
                 socket.on(constants_1.Constants.MSG_TYPES_START_GAME, (roomId) => {
                     this.games.set(roomId, this.roomManager.startRoom(roomId));

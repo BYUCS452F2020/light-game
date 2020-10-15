@@ -8,13 +8,14 @@ const domain_1 = require("./domain");
 const uuid_1 = require("uuid");
 const game_1 = __importDefault(require("./game"));
 const constants_1 = require("../shared/constants");
+const timers_1 = require("timers");
 class RoomManager {
     constructor() {
         this.rooms = new Map();
+        this.waitingRoomUsernamePings = new Map();
     }
     joinRoom(roomId, socket, username) {
         let room = this.rooms.get(roomId);
-        console.log("room", room);
         if (room == null) {
             socket.emit(constants_1.Constants.JOIN_ROOM_FAIL);
             return;
@@ -31,7 +32,32 @@ class RoomManager {
         console.log(`User ${username} create room ${roomId}`);
         console.log(`PLAYER CREATED ROOM: ${socket.id}, ${username}, ${roomId}`);
         this.rooms.set(roomId, [player]);
+        let interval = setInterval(this.getRoomPlayersUsernames, 3000, this.rooms, roomId);
+        this.waitingRoomUsernamePings.set(roomId, interval);
         socket.emit(constants_1.Constants.ROOM_CREATED, roomId);
+    }
+    getRoomPlayersUsernames(rooms, roomId) {
+        const roomPlayers = rooms.get(roomId);
+        const usernames = roomPlayers.map(player => player.username);
+        roomPlayers.map(player => {
+            player.socket.emit(constants_1.Constants.ROOM_WAITING_PLAYERS_RESPONSE, usernames);
+        });
+    }
+    leaveRoom(socket, roomId, username) {
+        const roomPlayers = this.rooms.get(roomId);
+        const remainingPlayers = roomPlayers.filter(player => player.username != username);
+        if (remainingPlayers.length == 0) {
+            this.deleteRoom(roomId);
+        }
+        else {
+            this.rooms.set(roomId, remainingPlayers);
+        }
+        socket.emit(constants_1.Constants.LEAVE_ROOM_SUCCESS);
+    }
+    deleteRoom(roomId) {
+        let interval = this.waitingRoomUsernamePings.get(roomId);
+        timers_1.clearInterval(interval);
+        this.rooms.delete(roomId);
     }
     startRoom(roomId) {
         console.log(`STARTED ROOM: ${roomId}`);
@@ -41,7 +67,7 @@ class RoomManager {
             game.addPlayer(player.socket, player.username);
         });
         game.start();
-        this.rooms.delete(roomId);
+        this.deleteRoom(roomId);
         return game;
     }
 }
