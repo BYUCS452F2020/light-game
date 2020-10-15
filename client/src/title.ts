@@ -70,7 +70,7 @@ export class TitleScene extends Phaser.Scene {
     
     startRoom() {
         this.socketClient.emit(Constants.CREATE_ROOM, this.playerUsername);
-        this.socketClient.on(Constants.CREATE_ROOM + "_SUCCESS", (roomId: string) => {
+        this.socketClient.on(Constants.ROOM_CREATED, (roomId: string) => {
             // Join the loading room if successful
             console.log(`CREATING WAITING ROOM for ${roomId}`)
             this.scene.start('room', {playerUsername: this.playerUsername, roomId, socketClient: this.socketClient});
@@ -80,10 +80,13 @@ export class TitleScene extends Phaser.Scene {
     joinRoom(roomId) {
         // TODO: Verify roomid before launching the room scene
         this.socketClient.emit(Constants.JOIN_ROOM, {roomId, username: this.playerUsername});
-        this.socketClient.on(Constants.JOIN_ROOM + "_SUCCESS", (roomId: string) => {
+        this.socketClient.on(Constants.JOIN_ROOM_SUCCESS, (roomId: string) => {
             // Join the loading room if successful
             console.log(`LOADING WAITING ROOM for ${roomId}`)
             this.scene.start('room', {playerUsername: this.playerUsername, roomId, socketClient: this.socketClient});
+        })
+        this.socketClient.on(Constants.JOIN_ROOM_FAIL, () => {
+            console.log("Failed to join room", roomId);
         })
     }
 

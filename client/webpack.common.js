@@ -1,8 +1,7 @@
 const path = require('path');
 const webpack = require('webpack')
 
-module.exports = () => {
-  return {
+module.exports = {
   mode: 'production',
   entry: './client/src/app.ts',
   module: {
@@ -34,5 +33,5 @@ plugins: [
     openPage: 'login', // And here
   },
   devtool: 'cheap-module-source-map'
-}
+
 };

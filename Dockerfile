@@ -8,8 +8,6 @@ RUN npm install
 
 COPY . .
 
-RUN chmod +x /usr/src/app/server/server.js
-
 EXPOSE 3000
 
-CMD npm run server
+CMD npm start
