@@ -44,10 +44,22 @@ class Flashlight {
     fov:number
 }
 
+// Copied from Server models
+// export class Player {
+//     position: MapLocation
+//     username: string
+//     hp: number
+//     socket:Socket
+//     id:number
+// }
+
+// Notice the client and server models of players are different
 export class Player {
-    position: MapLocation
-    username: string
+    id: number
+    x: number
+    y:number
+    visionDirection: number
+    visionAngle: number
     hp: number
-    socket:Socket
-    id:number
+    isInLight: boolean
 }

@@ -1,8 +1,11 @@
 import { Player } from '../server/domain';
 
+// Increase this number every time a new peice of information is added
+const numInformationEncoded = 7;
+
 export const encodeUpdate = (players: Map<string, Player>) => {
     const playersLength = players.size
-    let arr = new Uint16Array(1 + playersLength * 6);
+    let arr = new Uint16Array(1 + playersLength * numInformationEncoded);
     arr[0] = playersLength
     let i = 1;
     players.forEach((value: Player, key: string) => {
@@ -11,8 +14,9 @@ export const encodeUpdate = (players: Map<string, Player>) => {
         arr[i + 2] = value.position.y;
         arr[i + 3] = value.visionDirection * 180/Math.PI + 180; // Convert to degrees first so as to not lose precision with radians (also add 180 degrees since this is a uint)
         arr[i + 4] = value.visionAngle * 180/Math.PI + 180;
-        arr[i + 5] = value.hp
-        i = i + 6;
+        arr[i + 5] = value.hp;
+        arr[i + 6] = value.isInLight ? 1 : 0;
+        i = i + numInformationEncoded;
       });
     return arr
 }
@@ -21,7 +25,7 @@ export const decodeUpdate = (encodedArr: Uint16Array) => {
     let players = [] // Partial player information
     const numPlayers = encodedArr[0]
     let playerNumber = 0;
-    for (let i = 1; playerNumber < numPlayers; i += 6, playerNumber += 1) {
+    for (let i = 1; playerNumber < numPlayers; i += numInformationEncoded, playerNumber += 1) {
         let player = {}
         player['id'] = encodedArr[i]
         player['x'] = encodedArr[i+1]
@@ -29,6 +33,7 @@ export const decodeUpdate = (encodedArr: Uint16Array) => {
         player['visionDirection'] = (encodedArr[i+3] - 180) * Math.PI/180; // Convert back to radians (subtracting 180 degrees from avoiding overflow from before)
         player['visionAngle'] = (encodedArr[i+4] - 180) * Math.PI/180;
         player['hp'] = encodedArr[i+5]
+        player['isInLight'] = encodedArr[i+6] == 1
         players.push(player)
     }
     return players

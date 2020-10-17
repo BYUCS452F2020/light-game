@@ -36,13 +36,6 @@ export default class Game {
     let [_, lightPlayer] = Array.from(this.players)[getRandomInt(this.players.size)]
     this.lightPlayer = lightPlayer;
 
-    // lightPlayer = new LightPlayer(lightPlayer)
-    // this.players.set(id, lightPlayer)
-
-    // console.log("STARTING GAME!")
-    // console.log(this.players)
-    // console.log(this.players.values())
-
     const jsonMap = JSON.stringify(this.map)
 
     // TODO: Better handle when game map generation is slow
@@ -398,6 +391,7 @@ export default class Game {
     return inside;
   }
 
+  // TODO: Works for only 1 light player
   checkIfLightContainsPlayer() {
     // TODO: isFlashlight parameter set to true, since it is the only option right now for players for their vision
     const lightPointOrder = this.calculateRayPolygon(this.lightPlayer.position.x, this.lightPlayer.position.y, this.lightPlayer.visionDirection, this.lightPlayer.visionAngle, true);
@@ -407,14 +401,18 @@ export default class Game {
       if (this.lightPlayer.id !== player.id) {
         if (this.lightPointOrderContains(lightPointOrder, player.position.x, player.position.y)) {
           // TODO: This player is inside the burning light
+          player.isInLight = true;
           if (player.hp > 0) {
             player.hp -= 1;
+          } else {
+            // TODO: Game Is Over for this player
           }
         } else {
           // TODO: This player is outside the burning light
+          player.isInLight = false;
         }
       } else {
-        // TODO: Game Is Over for this player
+        // TODO: This is the lightplayer
       }
     })
     

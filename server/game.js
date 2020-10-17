@@ -279,11 +279,15 @@ class Game {
         this.players.forEach((player, key) => {
             if (this.lightPlayer.id !== player.id) {
                 if (this.lightPointOrderContains(lightPointOrder, player.position.x, player.position.y)) {
+                    player.isInLight = true;
                     if (player.hp > 0) {
                         player.hp -= 1;
                     }
+                    else {
+                    }
                 }
                 else {
+                    player.isInLight = false;
                 }
             }
             else {

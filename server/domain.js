@@ -99,6 +99,7 @@ class Player {
         this.socket = socket;
         this.visionDirection = visionDirection;
         this.visionAngle = visionAngle;
+        this.isInLight = false;
     }
 }
 exports.Player = Player;

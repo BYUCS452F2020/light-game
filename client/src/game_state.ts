@@ -42,7 +42,7 @@ export class GameState extends Phaser.Scene {
   playerUsername: string = null;
   roomId: string = null;
 
-  players: {id: number, x: number, y:number, visionDirection: number, visionAngle: number, hp: number}[]
+  players: Player[]
   lightPlayerIds: number[]
   isLightPlayer: boolean // Cached version of above, but relative to this player's id
 
@@ -78,15 +78,15 @@ export class GameState extends Phaser.Scene {
       this.playerId = data.playerId;
       this.playerUsername = data.playerUsername;
       this.roomId = data.roomId;
-      this.lightPlayerIds = data.lightPlayerIds
+      this.lightPlayerIds = data.lightPlayerIds;
       GameState.roomWidth = data.height;
       GameState.roomHeight = data.width;
-      this.numEdges = data.numEdges
-      this.numPoints = data.numPoints
-      this.numPolygons = data.numPolygons
-      this.allEdges = data.allEdges
-      this.allPoints = data.allPoints
-      this.allPolygons = data.allPolygons
+      this.numEdges = data.numEdges;
+      this.numPoints = data.numPoints;
+      this.numPolygons = data.numPolygons;
+      this.allEdges = data.allEdges;
+      this.allPoints = data.allPoints;
+      this.allPolygons = data.allPolygons;
     }
 
     preload() {
@@ -276,6 +276,14 @@ export class GameState extends Phaser.Scene {
 
     return finalPointOrder;
   }
+
+  drawPlayerHealthbar(player: Player) {
+    // Temporary healthbars for this player
+    this.graphics.fillStyle(0xffffff, 0.5)
+    this.graphics.fillRect(player.x - 50, player.y - 20, 100, 10);
+    this.graphics.fillStyle(player.hp, 1.0)
+    this.graphics.fillRect(player.x - 50, player.y - 20, player.hp, 10);
+  }
   
   // Is called on every frame
   update() {
@@ -325,23 +333,47 @@ export class GameState extends Phaser.Scene {
 
         // TODO: Not sure why there is a bug that the polygon points are not more than 2 points (maybe the polygon points are undefined)
         if (visionPolygon.points.length > 2) {
-          this.graphics.fillPoints(visionPolygon.points, true);
+          // If this player is on the light team, then draw only players that are on the light team
+          if (this.lightPlayerIds && this.lightPlayerIds.includes(this.playerId)) {
+            if (this.lightPlayerIds.includes(currentPlayer.id)) {
+              this.graphics.fillPoints(visionPolygon.points, true);
+            }
+          } else {
+            // If this player is on the dark team, then draw everyone's vision polygons
+            this.graphics.fillPoints(visionPolygon.points, true);
+          }
         }
-
-        // Draw the person
+      }
+      
+      // Draw players in separate for-loop so as to maintain a high z-index for drawing
+      // TODO: Find a better way to do z-index drawing without 2 for loops
+      for (let index = 0; index < numPlayers; ++index) {
+        const currentPlayer = this.players[index];
+        
         // Color is depending if it is this person (red for this, blue for other)
         if (currentPlayer.id == this.playerId) {
           this.graphics.fillStyle(0xff0000) 
         } else {
           this.graphics.fillStyle(0x0000ff);
         }
-        this.graphics.fillCircle(currentPlayer.x, currentPlayer.y, 5);
 
-        // Temporary healthbars for this player
-        this.graphics.fillStyle(0xffffff, 0.5)
-        this.graphics.fillRect(currentPlayer.x - 50, currentPlayer.y - 20, 100, 10);
-        this.graphics.fillStyle(currentPlayer.hp, 1.0)
-        this.graphics.fillRect(currentPlayer.x - 50, currentPlayer.y - 20, currentPlayer.hp, 10);
+        // Only draw positions of players on same team if it is light team
+        if (this.lightPlayerIds && this.lightPlayerIds.includes(this.playerId)) {
+          if (this.lightPlayerIds.includes(currentPlayer.id)) {
+            this.graphics.fillCircle(currentPlayer.x, currentPlayer.y, 5);
+            this.drawPlayerHealthbar(currentPlayer);
+          } else {
+            // However, draw a dark-team player if it ends up in the light
+            if (currentPlayer.isInLight) {
+              this.graphics.fillCircle(currentPlayer.x, currentPlayer.y, 5);
+              this.drawPlayerHealthbar(currentPlayer);
+            }
+          }
+        } else {
+          // Otherwise, dark players know where everyone is
+          this.graphics.fillCircle(currentPlayer.x, currentPlayer.y, 5);
+          this.drawPlayerHealthbar(currentPlayer);
+        }
       }
     }
 

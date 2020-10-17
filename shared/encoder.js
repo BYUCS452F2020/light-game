@@ -1,9 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.decodeInput = exports.encodeInput = exports.decodeUpdate = exports.encodeUpdate = void 0;
+const numInformationEncoded = 7;
 exports.encodeUpdate = (players) => {
     const playersLength = players.size;
-    let arr = new Uint16Array(1 + playersLength * 6);
+    let arr = new Uint16Array(1 + playersLength * numInformationEncoded);
     arr[0] = playersLength;
     let i = 1;
     players.forEach((value, key) => {
@@ -13,15 +14,17 @@ exports.encodeUpdate = (players) => {
         arr[i + 3] = value.visionDirection * 180 / Math.PI + 180;
         arr[i + 4] = value.visionAngle * 180 / Math.PI + 180;
         arr[i + 5] = value.hp;
-        i = i + 6;
+        arr[i + 6] = value.isInLight ? 1 : 0;
+        i = i + numInformationEncoded;
     });
     return arr;
 };
 exports.decodeUpdate = (encodedArr) => {
     let players = [];
     const numPlayers = encodedArr[0];
+    console.log(encodedArr);
     let playerNumber = 0;
-    for (let i = 1; playerNumber < numPlayers; i += 6, playerNumber += 1) {
+    for (let i = 1; playerNumber < numPlayers; i += numInformationEncoded, playerNumber += 1) {
         let player = {};
         player['id'] = encodedArr[i];
         player['x'] = encodedArr[i + 1];
@@ -29,6 +32,7 @@ exports.decodeUpdate = (encodedArr) => {
         player['visionDirection'] = (encodedArr[i + 3] - 180) * Math.PI / 180;
         player['visionAngle'] = (encodedArr[i + 4] - 180) * Math.PI / 180;
         player['hp'] = encodedArr[i + 5];
+        player['isInLight'] = encodedArr[i + 6] == 1;
         players.push(player);
     }
     return players;

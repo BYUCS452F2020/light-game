@@ -150,6 +150,7 @@ export class Player {
     id:number
     visionDirection: number
     visionAngle: number
+    isInLight: boolean
     constructor(username:string, id: number, socket:Socket, position:MapLocation, visionDirection: number, visionAngle: number) {
         this.position = position
         this.id = id;
@@ -158,6 +159,7 @@ export class Player {
         this.socket = socket
         this.visionDirection = visionDirection
         this.visionAngle = visionAngle
+        this.isInLight = false;
     }
 }
 
