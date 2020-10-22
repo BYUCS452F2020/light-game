@@ -1,5 +1,5 @@
 import { priorityQueue } from '../shared/priority_queue' // TODO: Put in shared folder
-import { MapLocation } from './domain';
+import { MapLocation } from '../shared/models';
 
 export function generatePolygon(numPoints: number, startX: number, startY: number, maxSize: number): MapLocation[] {
 

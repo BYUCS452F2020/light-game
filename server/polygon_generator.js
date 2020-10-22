@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.generatePolygon = void 0;
 const priority_queue_1 = require("../shared/priority_queue");
-const domain_1 = require("./domain");
+const models_1 = require("../shared/models");
 function generatePolygon(numPoints, startX, startY, maxSize) {
     if (numPoints < 3) {
         numPoints = 3;
@@ -12,7 +12,7 @@ function generatePolygon(numPoints, startX, startY, maxSize) {
         const randomAngle = Math.random() * Math.PI * 2;
         rayAngleQueue.insert(randomAngle, randomAngle);
     }
-    let points = [new domain_1.MapLocation(startX, startY)];
+    let points = [new models_1.MapLocation(startX, startY)];
     let previousX = startX;
     let previousY = startY;
     for (let index = 0; index < numPoints - 1; ++index) {
@@ -21,7 +21,7 @@ function generatePolygon(numPoints, startX, startY, maxSize) {
         const newX = Math.cos(angle) * rayLength + previousX;
         const newY = Math.sin(angle) * rayLength + previousY;
         console.log([newX, newY]);
-        points.push(new domain_1.MapLocation(newX, newY));
+        points.push(new models_1.MapLocation(newX, newY));
     }
     return points;
 }

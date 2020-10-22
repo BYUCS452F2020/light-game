@@ -9,7 +9,6 @@ import * as Encoder from '../shared/encoder';
 import webpackConfig from '../client/webpack.common.js';
 
 import { Socket } from 'socket.io';
-import { MapLocation } from "./domain";
 import Game from './game';
 import { RoomManager } from "./roomManager";
 

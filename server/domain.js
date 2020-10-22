@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Line = exports.getRandomInt = exports.MapLocation = exports.Obstacle = exports.LightPlayer = exports.Player = exports.GameMap = void 0;
+exports.getRandomInt = exports.LightPlayer = exports.Player = exports.GameMap = void 0;
+const models_1 = require("../shared/models");
 class GameMap {
     constructor(nPlayers) {
         this.allPoints = [];
@@ -14,12 +15,12 @@ class GameMap {
         this.width = 500;
         this.obstacles = [];
         this.levers = [];
-        const a1 = [new MapLocation(400, 100), new MapLocation(200, 278), new MapLocation(340, 430), new MapLocation(650, 80)];
-        const ob1 = new Obstacle(a1, 0x00aa0);
-        const a2 = [new MapLocation(0, 0), new MapLocation(this.width, 0), new MapLocation(this.width, this.height), new MapLocation(0, this.height)];
-        const ob2 = new Obstacle(a2, 0x0000aa);
-        const a3 = [new MapLocation(200, 200), new MapLocation(300, 278), new MapLocation(340, 430)];
-        const ob3 = new Obstacle(a3, 0xaaaa00);
+        const a1 = [new models_1.MapLocation(400, 100), new models_1.MapLocation(200, 278), new models_1.MapLocation(340, 430), new models_1.MapLocation(650, 80)];
+        const ob1 = new models_1.Obstacle(a1, 0x00aa0);
+        const a2 = [new models_1.MapLocation(0, 0), new models_1.MapLocation(this.width, 0), new models_1.MapLocation(this.width, this.height), new models_1.MapLocation(0, this.height)];
+        const ob2 = new models_1.Obstacle(a2, 0x0000aa);
+        const a3 = [new models_1.MapLocation(200, 200), new models_1.MapLocation(300, 278), new models_1.MapLocation(340, 430)];
+        const ob3 = new models_1.Obstacle(a3, 0xaaaa00);
         this.obstacles = [ob1, ob2, ob3];
         const NUM_LEVERS = 3;
         for (let i = 0; i < NUM_LEVERS; i++) {
@@ -34,23 +35,23 @@ class GameMap {
         this.allPoints = [];
         for (let index = 0; index < mapPolygons.length; ++index) {
             const currentPolygon = mapPolygons[index];
-            this.allPolygons.push({ polygon: currentPolygon, color: currentPolygon.color });
+            this.allPolygons.push(currentPolygon);
             this.allPoints = this.allPoints.concat(currentPolygon.points);
         }
         this.allEdges = [];
         for (let polygonIndex = 0; polygonIndex < this.numPolygons; ++polygonIndex) {
-            const currentPolygon = this.allPolygons[polygonIndex].polygon;
+            const currentPolygon = this.allPolygons[polygonIndex];
             let previousPoint = currentPolygon.points[0];
             let currentPoint;
             for (let index = 1; index <= currentPolygon.points.length; ++index) {
                 if (index == currentPolygon.points.length) {
                     currentPoint = currentPolygon.points[0];
-                    this.allEdges.push(new Line(currentPoint.x, currentPoint.y, previousPoint.x, previousPoint.y));
+                    this.allEdges.push(new models_1.Line(currentPoint.x, currentPoint.y, previousPoint.x, previousPoint.y));
                     break;
                 }
                 else {
                     currentPoint = currentPolygon.points[index];
-                    this.allEdges.push(new Line(currentPoint.x, currentPoint.y, previousPoint.x, previousPoint.y));
+                    this.allEdges.push(new models_1.Line(currentPoint.x, currentPoint.y, previousPoint.x, previousPoint.y));
                     previousPoint = currentPoint;
                 }
             }
@@ -80,7 +81,7 @@ class GameMap {
                     collisionY <= currentEdge.maxY + 0.00001 && collisionY >= currentEdge.minY - 0.00001) {
                     if (collisionX <= outerEdge.maxX + 0.00001 && collisionX >= outerEdge.minX - 0.00001 &&
                         collisionY <= outerEdge.maxY + 0.00001 && collisionY >= outerEdge.minY - 0.00001) {
-                        this.allPoints.push(new MapLocation(collisionX, collisionY));
+                        this.allPoints.push(new models_1.MapLocation(collisionX, collisionY));
                     }
                 }
             }
@@ -116,21 +117,6 @@ class Flashlight {
         this.fov = 40;
     }
 }
-class Obstacle {
-    constructor(points, color) {
-        this.id = Math.floor(Math.random() * Math.floor(10000)).toString();
-        this.points = points;
-        this.color = color;
-    }
-}
-exports.Obstacle = Obstacle;
-class MapLocation {
-    constructor(x, y) {
-        this.x = x;
-        this.y = y;
-    }
-}
-exports.MapLocation = MapLocation;
 class Lever {
     constructor(obstacle) {
         this.polygonId = obstacle.id;
@@ -141,21 +127,6 @@ function getRandomInt(max) {
     return Math.floor(Math.random() * Math.floor(max));
 }
 exports.getRandomInt = getRandomInt;
-class Line {
-    constructor(x1, y1, x2, y2) {
-        this.x1 = x1;
-        this.y1 = y1;
-        this.x2 = x2;
-        this.y2 = y2;
-        this.maxX = Math.max(x1, x2);
-        this.minX = Math.min(x1, x2);
-        this.maxY = Math.max(y1, y2);
-        this.minY = Math.min(y1, y2);
-        this.slope = (y2 - y1) / (x2 - x1);
-        this.b = (-this.slope * x1 + y1);
-    }
-}
-exports.Line = Line;
 class Color {
     constructor(r, g, b) {
         if (r)

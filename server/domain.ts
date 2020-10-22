@@ -1,5 +1,6 @@
 import { Socket } from 'socket.io';
 import { generatePolygon } from './polygon_generator'
+import { Line, MapLocation, Obstacle } from '../shared/models'
 
 export class GameMap {
 
@@ -11,7 +12,7 @@ export class GameMap {
     // More specific data about the game map (given to each player)
     allPoints: MapLocation[] = []
     allEdges: Line[] = []
-    allPolygons: {polygon: Obstacle, color: number}[] = []
+    allPolygons: Obstacle[] = []
   
     numPoints: number = 0;
     numEdges: number = 0;
@@ -56,9 +57,9 @@ export class GameMap {
         this.numPolygons = mapPolygons.length;
         this.allPoints = []
         for (let index = 0; index < mapPolygons.length; ++index) {
-          // TODO: All polygons are green (and drawn in this order)
+          // TODO: All polygons are drawn in this order
           const currentPolygon = mapPolygons[index]
-          this.allPolygons.push({polygon: currentPolygon, color: currentPolygon.color}); 
+          this.allPolygons.push(currentPolygon); 
     
           // Ordering doesn't matter here, though we add points that are later generated from collisions between polygons
           this.allPoints = this.allPoints.concat(currentPolygon.points)
@@ -68,7 +69,7 @@ export class GameMap {
         
         // Populates the edges object with all the polygons
         for (let polygonIndex = 0; polygonIndex < this.numPolygons; ++polygonIndex) {
-          const currentPolygon = this.allPolygons[polygonIndex].polygon;
+          const currentPolygon = this.allPolygons[polygonIndex];
           let previousPoint: MapLocation = currentPolygon.points[0];
           let currentPoint: MapLocation;
           
@@ -180,28 +181,6 @@ class Flashlight {
     }
 }
 
-export class Obstacle {
-
-    id: string
-    points : MapLocation[]
-    color: number
-    constructor(points:MapLocation[], color:number) {
-        this.id = Math.floor(Math.random() * Math.floor(10000)).toString()
-        this.points = points
-        this.color = color
-    }
-}
- 
-export class MapLocation {
-    x:number
-    y:number
-
-    constructor(x:number,y:number) {
-        this.x = x
-        this.y = y
-    }
-}
-
 class Lever {
     polygonId: string
     side: number
@@ -216,32 +195,6 @@ class Lever {
 export function getRandomInt(max:number) {
     return Math.floor(Math.random() * Math.floor(max));
   }
-
-  export class Line {
-    readonly x1:number
-    readonly y1:number
-    readonly x2:number
-    readonly y2:number
-    readonly maxX:number
-    readonly minX:number
-    readonly maxY:number
-    readonly minY:number
-    public slope:number
-    public b:number
-
-    constructor(x1:number, y1:number, x2:number, y2:number) {
-        this.x1 = x1
-        this.y1 = y1
-        this.x2 = x2
-        this.y2 = y2
-        this.maxX = Math.max(x1, x2)
-        this.minX = Math.min(x1, x2)
-        this.maxY = Math.max(y1, y2)
-        this.minY = Math.min(y1, y2)
-        this.slope = (y2-y1)/(x2-x1)
-        this.b = (-this.slope*x1 + y1)
-    }
-}
 
 class Color {
   r:number

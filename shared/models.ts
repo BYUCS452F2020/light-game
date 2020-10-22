@@ -1,3 +1,27 @@
+export class MapLocation {
+    x:number
+    y:number
+
+    constructor(x:number,y:number) {
+        this.x = x
+        this.y = y
+    }
+}
+
+// Represents each obstacle/polygon in the game room
+export class Obstacle {
+
+    id: string
+    points : MapLocation[]
+    color: number
+    constructor(points:MapLocation[], color:number) {
+        this.id = Math.floor(Math.random() * Math.floor(10000)).toString()
+        this.points = points
+        this.color = color
+    }
+}
+
+// Used for calculating vision polygons
 export class Line {
     readonly x1:number
     readonly y1:number

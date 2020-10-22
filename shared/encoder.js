@@ -22,7 +22,6 @@ exports.encodeUpdate = (players) => {
 exports.decodeUpdate = (encodedArr) => {
     let players = [];
     const numPlayers = encodedArr[0];
-    console.log(encodedArr);
     let playerNumber = 0;
     for (let i = 1; playerNumber < numPlayers; i += numInformationEncoded, playerNumber += 1) {
         let player = {};

@@ -21,7 +21,8 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const Encoder = __importStar(require("../shared/encoder"));
 const domain_1 = require("./domain");
-const priority_queue_1 = require("../shared/priority_queue");
+const models_1 = require("../shared/models");
+const vision_calculator_1 = require("../shared/vision_calculator");
 const constants_1 = require("../shared/constants");
 class Game {
     constructor() {
@@ -63,19 +64,9 @@ class Game {
         console.log("ADDING PLAYER!");
         console.log(x, y);
         const uniquePlayerId = this.players.size;
-        const newPlayer = new domain_1.Player(username, uniquePlayerId, socket, new domain_1.MapLocation(x, y), 90 * Math.PI / 180, 90 * Math.PI / 180);
+        const newPlayer = new domain_1.Player(username, uniquePlayerId, socket, new models_1.MapLocation(x, y), 90 * Math.PI / 180, 90 * Math.PI / 180);
         this.players.set(socket.id, newPlayer);
         socket.emit(constants_1.Constants.MSG_TYPES_JOIN_GAME, { x, y, id: uniquePlayerId });
-    }
-    boundAngle(angle) {
-        angle %= (2 * Math.PI);
-        if (angle > Math.PI) {
-            angle -= 2 * Math.PI;
-        }
-        if (angle < -Math.PI) {
-            angle += 2 * Math.PI;
-        }
-        return angle;
     }
     handleMovement(currentX, currentY, nextPointX, nextPointY) {
         const diffX = nextPointX - currentX;
@@ -103,7 +94,7 @@ class Game {
             if (collisionX <= currentEdge.maxX + 0.00001 && collisionX >= currentEdge.minX - 0.00001 &&
                 collisionY <= currentEdge.maxY + 0.00001 && collisionY >= currentEdge.minY - 0.00001) {
                 const distanceToLightOrigin = Math.sqrt(Math.pow(collisionX - currentX, 2) + Math.pow(collisionY - currentY, 2));
-                const angleToLight = this.boundAngle(Math.atan2(collisionY - currentY, collisionX - currentX));
+                const angleToLight = Math.atan2(collisionY - currentY, collisionX - currentX);
                 if (distanceToLightOrigin < currentCollisionDistance &&
                     ((angleToLight < rayAngle + 0.01 && angleToLight > rayAngle - 0.01) ||
                         (angleToLight + 2 * Math.PI < rayAngle + 0.01 && angleToLight + 2 * Math.PI > rayAngle - 0.01) ||
@@ -178,80 +169,6 @@ class Game {
         player.position.x = returnValue[0];
         player.position.y = returnValue[1];
     }
-    calculateRayPolygon(circleX, circleY, flashlightDirection, flashlightAngle, isFlashlight) {
-        let lowerRayBounds = this.boundAngle(flashlightDirection - flashlightAngle / 2);
-        let upperRayBounds = this.boundAngle(flashlightDirection + flashlightAngle / 2);
-        let rayAngleQueue = priority_queue_1.priorityQueue();
-        if (isFlashlight) {
-            let lowerX = circleX + Math.cos(lowerRayBounds) * 50;
-            let lowerY = circleY + Math.sin(lowerRayBounds) * 50;
-            let upperX = circleX + Math.cos(upperRayBounds) * 50;
-            let upperY = circleY + Math.sin(upperRayBounds) * 50;
-            rayAngleQueue.insert({ angle: lowerRayBounds, x: lowerX, y: lowerY }, lowerRayBounds);
-            rayAngleQueue.insert({ angle: upperRayBounds, x: upperX, y: upperY }, upperRayBounds);
-        }
-        for (let outerIndex = 0; outerIndex < this.map.numPoints; ++outerIndex) {
-            const currentPoint = this.map.allPoints[outerIndex];
-            const diffX = currentPoint.x - circleX;
-            const diffY = currentPoint.y - circleY;
-            const rayAngle = Math.atan2(diffY, diffX);
-            let beforeAngle = this.boundAngle(rayAngle - 0.00001);
-            let afterAngle = this.boundAngle(rayAngle + 0.00001);
-            const normalBounds = (lowerRayBounds < rayAngle && upperRayBounds > rayAngle);
-            const reversedBounds = (lowerRayBounds > upperRayBounds) && ((-Math.PI < rayAngle && upperRayBounds > rayAngle) || (lowerRayBounds < rayAngle && Math.PI > rayAngle));
-            if (!isFlashlight || reversedBounds || normalBounds) {
-                rayAngleQueue.insert({ angle: beforeAngle, x: currentPoint.x, y: currentPoint.y }, beforeAngle);
-                rayAngleQueue.insert({ angle: rayAngle, x: currentPoint.x, y: currentPoint.y }, rayAngle);
-                rayAngleQueue.insert({ angle: afterAngle, x: currentPoint.x, y: currentPoint.y }, afterAngle);
-            }
-        }
-        let visionQueue = priority_queue_1.priorityQueue();
-        let rayAngleLength = rayAngleQueue.size();
-        for (let outerIndex = 0; outerIndex < rayAngleLength; ++outerIndex) {
-            const { angle, x, y } = rayAngleQueue.pop();
-            const rayAngle = angle;
-            const raySlope = Math.tan(rayAngle);
-            const rayYIntercept = -(raySlope) * circleX + circleY;
-            let currentCollisionDistance = 100000000000;
-            let bestCollisionSoFar = { x: -1, y: -1 };
-            for (let innerIndex = 0; innerIndex < this.map.numEdges; ++innerIndex) {
-                const currentEdge = this.map.allEdges[innerIndex];
-                let collisionX;
-                let collisionY;
-                if (currentEdge.slope == null || currentEdge.slope == Infinity || currentEdge.slope == -Infinity) {
-                    collisionX = currentEdge.minX;
-                    collisionY = raySlope * collisionX + rayYIntercept;
-                }
-                else {
-                    collisionX = (rayYIntercept - currentEdge.b) / (currentEdge.slope - raySlope);
-                    collisionY = currentEdge.slope * collisionX + currentEdge.b;
-                }
-                if (collisionX <= currentEdge.maxX + 0.00001 && collisionX >= currentEdge.minX - 0.00001 &&
-                    collisionY <= currentEdge.maxY + 0.00001 && collisionY >= currentEdge.minY - 0.00001) {
-                    const distanceToLightOrigin = Math.sqrt(Math.pow(collisionX - circleX, 2) + Math.pow(collisionY - circleY, 2));
-                    const angleToLight = Math.atan2(collisionY - circleY, collisionX - circleX);
-                    if (distanceToLightOrigin < currentCollisionDistance &&
-                        ((angleToLight < rayAngle + 0.001 && angleToLight > rayAngle - 0.001))) {
-                        bestCollisionSoFar = { x: collisionX, y: collisionY };
-                        currentCollisionDistance = distanceToLightOrigin;
-                    }
-                }
-            }
-            visionQueue.insert(bestCollisionSoFar, rayAngle);
-        }
-        if (isFlashlight) {
-            let joinAngle = this.boundAngle(flashlightDirection + Math.PI);
-            visionQueue.insert({ x: circleX, y: circleY }, joinAngle);
-        }
-        let finalPointOrder = [];
-        while (visionQueue.peek() != null) {
-            const nextPoint = visionQueue.pop();
-            const pointX = nextPoint.x;
-            const pointY = nextPoint.y;
-            finalPointOrder.push(pointX, pointY);
-        }
-        return finalPointOrder;
-    }
     lightPointOrderContains(lightPointOrder, x, y) {
         var inside = false;
         const numEntires = lightPointOrder.length;
@@ -275,7 +192,7 @@ class Game {
         return inside;
     }
     checkIfLightContainsPlayer() {
-        const lightPointOrder = this.calculateRayPolygon(this.lightPlayer.position.x, this.lightPlayer.position.y, this.lightPlayer.visionDirection, this.lightPlayer.visionAngle, true);
+        const lightPointOrder = vision_calculator_1.calculateRayPolygon(this.lightPlayer.position.x, this.lightPlayer.position.y, this.lightPlayer.visionDirection, this.lightPlayer.visionAngle, true, this.map.allPoints, this.map.allEdges);
         this.players.forEach((player, key) => {
             if (this.lightPlayer.id !== player.id) {
                 if (this.lightPointOrderContains(lightPointOrder, player.position.x, player.position.y)) {
