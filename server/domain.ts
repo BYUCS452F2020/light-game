@@ -1,20 +1,23 @@
 import { Socket } from 'socket.io';
 import { generatePolygon } from './polygon_generator'
-import { Line, MapLocation, Obstacle } from '../shared/models'
+import { Line, MapLocation, Obstacle, Lever } from '../shared/models'
+
+// NOTE: Models that contain information not shared with clients will be stored here
 
 export class GameMap {
 
     height:number
     width: number
+
+    // Human-friendly definitions of the game obstacles and levels to pull
     obstacles: Obstacle[]
     levers: Lever[]
 
-    // More specific data about the game map (given to each player)
+    // Additional math-friendly versions of the data given above (given to each player)
     allPoints: MapLocation[] = []
     allEdges: Line[] = []
-    allPolygons: Obstacle[] = []
-  
-    numPoints: number = 0;
+
+    numPoints: number = 0; // TODO: Check if the following 3 are ever used
     numEdges: number = 0;
     numPolygons: number = 0;
 
@@ -41,6 +44,7 @@ export class GameMap {
         // set levers
         const NUM_LEVERS = 3
         for (let i = 0; i < NUM_LEVERS; i++) {
+          // TODO: The same obstacle-side combination can be chosen 2+ times (every lever should be unique)
             this.levers.push(new Lever(this.obstacles[getRandomInt(this.obstacles.length-1)]))
         }
 
@@ -53,13 +57,11 @@ export class GameMap {
     
         // Global object setting
         // Drawn in the order of this list
-        this.allPolygons = []
         this.numPolygons = mapPolygons.length;
         this.allPoints = []
         for (let index = 0; index < mapPolygons.length; ++index) {
           // TODO: All polygons are drawn in this order
           const currentPolygon = mapPolygons[index]
-          this.allPolygons.push(currentPolygon); 
     
           // Ordering doesn't matter here, though we add points that are later generated from collisions between polygons
           this.allPoints = this.allPoints.concat(currentPolygon.points)
@@ -69,7 +71,7 @@ export class GameMap {
         
         // Populates the edges object with all the polygons
         for (let polygonIndex = 0; polygonIndex < this.numPolygons; ++polygonIndex) {
-          const currentPolygon = this.allPolygons[polygonIndex];
+          const currentPolygon = mapPolygons[polygonIndex];
           let previousPoint: MapLocation = currentPolygon.points[0];
           let currentPoint: MapLocation;
           
@@ -141,8 +143,6 @@ export class GameMap {
     
 }
 
-
-
 export class Player {
     position: MapLocation
     username: string
@@ -178,17 +178,6 @@ class Flashlight {
     fov:number
     constructor() {
         this.fov = 40
-    }
-}
-
-class Lever {
-    polygonId: string
-    side: number
-
-    constructor(obstacle:Obstacle) {
-        this.polygonId = obstacle.id
-
-        this.side = Math.floor(Math.random() * obstacle.points.length)
     }
 }
 

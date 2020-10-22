@@ -97,7 +97,8 @@ export class RoomScene extends Phaser.Scene {
                 const numPolygons = gameMap['numPolygons']
                 const allEdges = gameMap['allEdges']
                 const allPoints = gameMap['allPoints']
-                const allPolygons = gameMap['allPolygons']
+                const obstacles = gameMap['obstacles']
+                const levers = gameMap['levers']
 
                 // Get game room information from server
                 const lightPlayerIds = JSON.parse(startGameObject['lightPlayerIds'])
@@ -117,7 +118,7 @@ export class RoomScene extends Phaser.Scene {
                     return;
                 }
                 
-                this.scene.start('game', {socketClient: this.socketClient, playerId, playerUsername: this.playerUsername, roomId: this.roomId, lightPlayerIds, roomWidth, roomHeight, numEdges, numPoints, numPolygons, allEdges, allPoints, allPolygons});
+                this.scene.start('game', {socketClient: this.socketClient, playerId, playerUsername: this.playerUsername, roomId: this.roomId, lightPlayerIds, roomWidth, roomHeight, numEdges, numPoints, numPolygons, allEdges, allPoints, obstacles, levers});
             })
 
             this.socketClient.on(Constants.MSG_TYPES_START_GAME + "_FAILURE", () => {

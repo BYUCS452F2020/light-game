@@ -11,13 +11,24 @@ export class MapLocation {
 // Represents each obstacle/polygon in the game room
 export class Obstacle {
 
-    id: string
+    id: number
     points : MapLocation[]
     color: number
     constructor(points:MapLocation[], color:number) {
-        this.id = Math.floor(Math.random() * Math.floor(10000)).toString()
+        // TODO: Polygons can have duplicate ids
+        this.id = Math.floor(Math.random() * Math.floor(10000))
         this.points = points
         this.color = color
+    }
+}
+
+export class Lever {
+    polygonId: number
+    side: number
+
+    constructor(obstacle:Obstacle) {
+        this.polygonId = obstacle.id
+        this.side = Math.floor(Math.random() * obstacle.points.length)
     }
 }
 

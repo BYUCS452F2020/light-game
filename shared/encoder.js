@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.decodeInput = exports.encodeInput = exports.decodeUpdate = exports.encodeUpdate = void 0;
+const models_1 = require("../client/src/models");
 const numInformationEncoded = 7;
 exports.encodeUpdate = (players) => {
     const playersLength = players.size;
@@ -24,15 +25,7 @@ exports.decodeUpdate = (encodedArr) => {
     const numPlayers = encodedArr[0];
     let playerNumber = 0;
     for (let i = 1; playerNumber < numPlayers; i += numInformationEncoded, playerNumber += 1) {
-        let player = {};
-        player['id'] = encodedArr[i];
-        player['x'] = encodedArr[i + 1];
-        player['y'] = encodedArr[i + 2];
-        player['visionDirection'] = (encodedArr[i + 3] - 180) * Math.PI / 180;
-        player['visionAngle'] = (encodedArr[i + 4] - 180) * Math.PI / 180;
-        player['hp'] = encodedArr[i + 5];
-        player['isInLight'] = encodedArr[i + 6] == 1;
-        players.push(player);
+        players.push(new models_1.PlayerClient(encodedArr[i], encodedArr[i + 1], encodedArr[i + 2], (encodedArr[i + 3] - 180) * Math.PI / 180, (encodedArr[i + 4] - 180) * Math.PI / 180, encodedArr[i + 5], encodedArr[i + 6] == 1));
     }
     return players;
 };

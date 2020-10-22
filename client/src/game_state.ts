@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser'
-import { Player } from './models'
+import { PlayerClient } from './models'
 
-import { MapLocation, Line, Obstacle } from '../../shared/models'
+import { MapLocation, Line, Obstacle, Lever } from '../../shared/models'
 import { calculateRayPolygon } from '../../shared/vision_calculator'
 import * as Encoder from '../../shared/encoder';
 import { Constants } from '../../shared/constants';
@@ -16,7 +16,8 @@ export class GameState extends Phaser.Scene {
 
   allPoints: MapLocation[] = []
   allEdges: Line[] = []
-  allPolygons: Obstacle[] = []
+  obstacles: Obstacle[] = []
+  levers: Lever[] = []
 
   numPoints: number = 0;
   numEdges: number = 0;
@@ -42,7 +43,7 @@ export class GameState extends Phaser.Scene {
   playerUsername: string = null;
   roomId: string = null;
 
-  players: Player[]
+  players: PlayerClient[]
   lightPlayerIds: number[]
   isLightPlayer: boolean // Cached version of above, but relative to this player's id
 
@@ -86,7 +87,9 @@ export class GameState extends Phaser.Scene {
       this.numPolygons = data.numPolygons;
       this.allEdges = data.allEdges;
       this.allPoints = data.allPoints;
-      this.allPolygons = data.allPolygons;
+      this.obstacles = data.obstacles;
+      this.levers = data.levers;
+      console.log(this.levers)
     }
 
     preload() {
@@ -146,7 +149,7 @@ export class GameState extends Phaser.Scene {
       );
   }
 
-  drawPlayerHealthbar(player: Player) {
+  drawPlayerHealthbar(player: PlayerClient) {
     // Temporary healthbars for this player
     this.graphics.fillStyle(0xffffff, 0.5)
     this.graphics.fillRect(player.x - 50, player.y - 20, 100, 10);
@@ -171,7 +174,7 @@ export class GameState extends Phaser.Scene {
   
     // TODO: Not sure if this can be optimized as an image
     for (let index = 0; index < this.numPolygons; ++index) {
-      const currentPolygon = this.allPolygons[index]
+      const currentPolygon = this.obstacles[index]
       this.graphics.fillStyle(currentPolygon.color)
       // TODO: Do not calculate this every frame
       const interpretablePoints: Phaser.Geom.Point[] = currentPolygon.points.map((maplocation: MapLocation) => new Phaser.Geom.Point(maplocation.x, maplocation.y))
@@ -242,6 +245,22 @@ export class GameState extends Phaser.Scene {
           // Otherwise, dark players know where everyone is
           this.graphics.fillCircle(currentPlayer.x, currentPlayer.y, 5);
           this.drawPlayerHealthbar(currentPlayer);
+        }
+
+        // Draw levers for dark players
+        // 16777215 is the max number 0xffffff for color
+        const randomColor = Math.floor(Math.random() * 16777216)
+        this.graphics.lineStyle(5, randomColor, 1)
+        if (this.lightPlayerIds && !this.lightPlayerIds.includes(this.playerId)) {
+          for (let leverIndex = 0; leverIndex < this.levers.length; ++leverIndex) {
+            const currentLever = this.levers[leverIndex];
+
+            // Levers are on the side of an obstacle, but are generated from the selected point to the next point in the list
+            const selectedObstacleForLever = this.obstacles.find(obstacle => obstacle.id == currentLever.polygonId)
+            const firstPointForLever = selectedObstacleForLever.points[currentLever.side]
+            const secondPointForLever = selectedObstacleForLever.points[(currentLever.side + 1) % selectedObstacleForLever.points.length]
+            this.graphics.lineBetween(firstPointForLever.x, firstPointForLever.y,secondPointForLever.x, secondPointForLever.y)
+          }
         }
       }
     }

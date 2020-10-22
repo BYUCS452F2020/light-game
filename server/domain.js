@@ -6,7 +6,6 @@ class GameMap {
     constructor(nPlayers) {
         this.allPoints = [];
         this.allEdges = [];
-        this.allPolygons = [];
         this.numPoints = 0;
         this.numEdges = 0;
         this.numPolygons = 0;
@@ -24,23 +23,21 @@ class GameMap {
         this.obstacles = [ob1, ob2, ob3];
         const NUM_LEVERS = 3;
         for (let i = 0; i < NUM_LEVERS; i++) {
-            this.levers.push(new Lever(this.obstacles[getRandomInt(this.obstacles.length - 1)]));
+            this.levers.push(new models_1.Lever(this.obstacles[getRandomInt(this.obstacles.length - 1)]));
         }
         this.getMapInformationCached();
     }
     getMapInformationCached() {
         const mapPolygons = this.obstacles;
-        this.allPolygons = [];
         this.numPolygons = mapPolygons.length;
         this.allPoints = [];
         for (let index = 0; index < mapPolygons.length; ++index) {
             const currentPolygon = mapPolygons[index];
-            this.allPolygons.push(currentPolygon);
             this.allPoints = this.allPoints.concat(currentPolygon.points);
         }
         this.allEdges = [];
         for (let polygonIndex = 0; polygonIndex < this.numPolygons; ++polygonIndex) {
-            const currentPolygon = this.allPolygons[polygonIndex];
+            const currentPolygon = mapPolygons[polygonIndex];
             let previousPoint = currentPolygon.points[0];
             let currentPoint;
             for (let index = 1; index <= currentPolygon.points.length; ++index) {
@@ -115,12 +112,6 @@ exports.LightPlayer = LightPlayer;
 class Flashlight {
     constructor() {
         this.fov = 40;
-    }
-}
-class Lever {
-    constructor(obstacle) {
-        this.polygonId = obstacle.id;
-        this.side = Math.floor(Math.random() * obstacle.points.length);
     }
 }
 function getRandomInt(max) {
