@@ -169,6 +169,32 @@ class Game {
         player.position.x = returnValue[0];
         player.position.y = returnValue[1];
     }
+    leverIsTouched(socket, indexOfLeverTouched) {
+        console.log("DATA FROM CLIENT FOR LEVER " + indexOfLeverTouched);
+        this.map.levers[indexOfLeverTouched].isTouched = true;
+        this.players.forEach((player, key) => {
+            player.socket.emit(constants_1.Constants.LEVER_IS_TOUCHED, indexOfLeverTouched);
+        });
+    }
+    didDarkPlayersWin() {
+        for (let leverIndex = 0; leverIndex < this.map.levers.length; ++leverIndex) {
+            const currentLever = this.map.levers[leverIndex];
+            if (!currentLever.isTouched) {
+                return false;
+            }
+        }
+        return true;
+    }
+    didLightPlayersWin() {
+        let array = Array.from(this.players);
+        for (let playerIndex = 0; playerIndex < array.length; ++playerIndex) {
+            const currentPlayer = array[playerIndex][1];
+            if (this.lightPlayer.id !== currentPlayer.id && currentPlayer.hp != 0) {
+                return false;
+            }
+        }
+        return true;
+    }
     lightPointOrderContains(lightPointOrder, x, y) {
         var inside = false;
         const numEntires = lightPointOrder.length;
@@ -224,6 +250,13 @@ class Game {
         this.players.forEach(player => {
             player.socket.emit(constants_1.Constants.MSG_TYPES_GAME_UPDATE, playerArray);
         });
+        const didDarkPlayersWin = this.didDarkPlayersWin();
+        const didLightPlayersWin = this.didLightPlayersWin();
+        if (didDarkPlayersWin || didLightPlayersWin) {
+            this.players.forEach(player => {
+                player.socket.emit(constants_1.Constants.MSG_TYPES_GAME_OVER, didLightPlayersWin ? 1 : 0);
+            });
+        }
     }
 }
 exports.default = Game;

@@ -25,10 +25,12 @@ export class Obstacle {
 export class Lever {
     polygonId: number
     side: number
+    isTouched: boolean
 
     constructor(obstacle:Obstacle) {
         this.polygonId = obstacle.id
         this.side = Math.floor(Math.random() * obstacle.points.length)
+        this.isTouched = false;
     }
 }
 

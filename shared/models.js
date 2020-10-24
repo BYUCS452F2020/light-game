@@ -20,6 +20,7 @@ class Lever {
     constructor(obstacle) {
         this.polygonId = obstacle.id;
         this.side = Math.floor(Math.random() * obstacle.points.length);
+        this.isTouched = false;
     }
 }
 exports.Lever = Lever;

@@ -12,4 +12,5 @@ export enum Constants {
   LEAVE_ROOM = 'leave_room',
   LEAVE_ROOM_SUCCESS = 'leave_room_suc',
   ROOM_WAITING_PLAYERS_RESPONSE = 'room_waiting_players_response', // Response containing players' usernames in the current room
+  LEVER_IS_TOUCHED = 'lever_is_touched' // Send/Response for whether a lever is touched
 }

@@ -221,6 +221,37 @@ export default class Game {
     player.position.y = returnValue[1]
   }
 
+  leverIsTouched(socket: Socket, indexOfLeverTouched: number) {
+    console.log("DATA FROM CLIENT FOR LEVER " + indexOfLeverTouched)
+    this.map.levers[indexOfLeverTouched].isTouched = true;
+    this.players.forEach((player: Player, key: string) => {
+      player.socket.emit(Constants.LEVER_IS_TOUCHED, indexOfLeverTouched)
+    })
+  }
+
+  didDarkPlayersWin() {
+    // Check if the dark players won
+    for (let leverIndex = 0; leverIndex < this.map.levers.length; ++leverIndex) {
+      const currentLever = this.map.levers[leverIndex];
+      if (!currentLever.isTouched) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  // TODO: Supports only 1 light player
+  didLightPlayersWin() {
+    let array = Array.from(this.players);
+    for (let playerIndex = 0; playerIndex < array.length; ++playerIndex) {
+      const currentPlayer = array[playerIndex][1];
+      if (this.lightPlayer.id !== currentPlayer.id && currentPlayer.hp != 0) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   // NOTE: Modified from Phaser 3 source code polygon.contains()
   lightPointOrderContains(lightPointOrder: number[], x: number, y:number) {
     var inside = false;
@@ -312,6 +343,16 @@ export default class Game {
     this.players.forEach(player => {
       player.socket.emit(Constants.MSG_TYPES_GAME_UPDATE, playerArray);
     });
+
+    const didDarkPlayersWin = this.didDarkPlayersWin();
+    const didLightPlayersWin = this.didLightPlayersWin();
+
+    if (didDarkPlayersWin || didLightPlayersWin) {
+      // Send a game update to each player 
+      this.players.forEach(player => {
+        player.socket.emit(Constants.MSG_TYPES_GAME_OVER, didLightPlayersWin ? 1 : 0);
+      });
+    }
 
   }
 
