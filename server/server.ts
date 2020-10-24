@@ -86,23 +86,6 @@ export class Server {
       }
     });
 
-    // This next line needs a game id
-    socket.on(Constants.LEVER_IS_TOUCHED, (data: object) => {
-      if (gameForThisSocket) {
-        const encodedMessage: number = data['encodedMessage']
-        gameForThisSocket.leverIsTouched(socket, encodedMessage)
-      } else {
-        const roomId = data['roomId']
-        // Creates cached version of the game object to access later
-        gameForThisSocket = this.games.get(roomId)
-        // TODO: Send error response that input was not recognized for a game hadn't joined
-      }
-    });
-
-    socket.on(Constants.MSG_TYPES_GAME_OVER, (isLightTeamWin: boolean) => {
-
-    })
-
     socket.on('disconnect', () => {
       if (gameForThisSocket) {
         gameForThisSocket.players.delete(socket.id);

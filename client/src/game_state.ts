@@ -179,13 +179,6 @@ export class GameState extends Phaser.Scene {
       );
   }
 
-  leverIsTouched(leverIndex: number) {
-    console.log(leverIndex)
-    this.socketClient.emit(Constants.LEVER_IS_TOUCHED,
-      {roomId: this.roomId, encodedMessage: leverIndex}
-      );
-  }
-
   drawPlayerHealthbar(player: PlayerClient) {
     // Temporary healthbars for this player
     this.dynamicGraphics.fillStyle(0xffffff, 0.5)
@@ -288,12 +281,7 @@ export class GameState extends Phaser.Scene {
                 const selectedObstacleForLever = this.obstacles.find(obstacle => obstacle.id == currentLever.polygonId)
                 const firstPointForLever = selectedObstacleForLever.points[currentLever.side]
                 const secondPointForLever = selectedObstacleForLever.points[(currentLever.side + 1) % selectedObstacleForLever.points.length]
-                const distanceToLever = this.calculateDistanceBetweenLineAndPoint(firstPointForLever.x, firstPointForLever.y,secondPointForLever.x, secondPointForLever.y, this.thisPlayer.x, this.thisPlayer.y)
-                if (distanceToLever < 10) {
-                  this.leverIsTouched(leverIndex)
-                } else {
-                  this.dynamicGraphics.lineBetween(firstPointForLever.x, firstPointForLever.y,secondPointForLever.x, secondPointForLever.y)
-                }
+                this.dynamicGraphics.lineBetween(firstPointForLever.x, firstPointForLever.y,secondPointForLever.x, secondPointForLever.y)
               }
             }
           }
@@ -338,14 +326,6 @@ export class GameState extends Phaser.Scene {
       } else {
         this.generalOverlayText.text = 'Light Team WINS!'
       }
-      
     }
-  }
-
-  calculateDistanceBetweenLineAndPoint(lineX1: number, lineY1: number, lineX2: number, lineY2: number, pointX: number, pointY: number) {
-    const yDiff = lineY2 - lineY1;
-    const xDiff = lineX2 - lineX1;
-    
-    return Math.abs(yDiff*pointX - xDiff*pointY + lineX2*lineY1 - lineY2*lineX1) / Math.sqrt(Math.pow(yDiff,2) + Math.pow(xDiff, 2));
   }
 }

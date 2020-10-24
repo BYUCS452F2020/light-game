@@ -169,12 +169,51 @@ class Game {
         player.position.x = returnValue[0];
         player.position.y = returnValue[1];
     }
-    leverIsTouched(socket, indexOfLeverTouched) {
-        console.log("DATA FROM CLIENT FOR LEVER " + indexOfLeverTouched);
-        this.map.levers[indexOfLeverTouched].isTouched = true;
-        this.players.forEach((player, key) => {
-            player.socket.emit(constants_1.Constants.LEVER_IS_TOUCHED, indexOfLeverTouched);
+    checkIfLeversTouched() {
+        this.players.forEach((currentPlayer, key) => {
+            for (let leverIndex = 0; leverIndex < this.map.levers.length; ++leverIndex) {
+                let currentLever = this.map.levers[leverIndex];
+                if (!currentLever.isTouched) {
+                    const selectedObstacleForLever = this.map.obstacles.find(obstacle => obstacle.id == currentLever.polygonId);
+                    const firstPointForLever = selectedObstacleForLever.points[currentLever.side];
+                    const secondPointForLever = selectedObstacleForLever.points[(currentLever.side + 1) % selectedObstacleForLever.points.length];
+                    const distanceToLever = this.calculateDistanceBetweenLineAndPoint(firstPointForLever.x, firstPointForLever.y, secondPointForLever.x, secondPointForLever.y, currentPlayer.position.x, currentPlayer.position.y);
+                    if (distanceToLever < 10) {
+                        currentLever.isTouched = true;
+                        this.players.forEach((player, key) => {
+                            player.socket.emit(constants_1.Constants.LEVER_IS_TOUCHED, leverIndex);
+                        });
+                    }
+                }
+            }
         });
+    }
+    calculateDistanceBetweenLineAndPoint(x1, y1, x2, y2, pointX, pointY) {
+        let A = pointX - x1;
+        let B = pointY - y1;
+        let C = x2 - x1;
+        let D = y2 - y1;
+        let dot = A * C + B * D;
+        let len_sq = C * C + D * D;
+        let param = -1;
+        if (len_sq != 0)
+            param = dot / len_sq;
+        let xx, yy;
+        if (param < 0) {
+            xx = x1;
+            yy = y1;
+        }
+        else if (param > 1) {
+            xx = x2;
+            yy = y2;
+        }
+        else {
+            xx = x1 + param * C;
+            yy = y1 + param * D;
+        }
+        let dx = pointX - xx;
+        let dy = pointY - yy;
+        return Math.sqrt(dx * dx + dy * dy);
     }
     didDarkPlayersWin() {
         for (let leverIndex = 0; leverIndex < this.map.levers.length; ++leverIndex) {
@@ -244,6 +283,7 @@ class Game {
         if (this.lightPlayer) {
             this.checkIfLightContainsPlayer();
         }
+        this.checkIfLeversTouched();
         this.players.forEach((player, id) => {
         });
         const playerArray = Encoder.encodeUpdate(this.players);

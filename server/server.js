@@ -48,18 +48,6 @@ class Server {
                         gameForThisSocket = this.games.get(roomId);
                     }
                 });
-                socket.on(constants_1.Constants.LEVER_IS_TOUCHED, (data) => {
-                    if (gameForThisSocket) {
-                        const encodedMessage = data['encodedMessage'];
-                        gameForThisSocket.leverIsTouched(socket, encodedMessage);
-                    }
-                    else {
-                        const roomId = data['roomId'];
-                        gameForThisSocket = this.games.get(roomId);
-                    }
-                });
-                socket.on(constants_1.Constants.MSG_TYPES_GAME_OVER, (isLightTeamWin) => {
-                });
                 socket.on('disconnect', () => {
                     if (gameForThisSocket) {
                         gameForThisSocket.players.delete(socket.id);

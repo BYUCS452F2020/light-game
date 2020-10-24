@@ -221,12 +221,59 @@ export default class Game {
     player.position.y = returnValue[1]
   }
 
-  leverIsTouched(socket: Socket, indexOfLeverTouched: number) {
-    console.log("DATA FROM CLIENT FOR LEVER " + indexOfLeverTouched)
-    this.map.levers[indexOfLeverTouched].isTouched = true;
-    this.players.forEach((player: Player, key: string) => {
-      player.socket.emit(Constants.LEVER_IS_TOUCHED, indexOfLeverTouched)
+  checkIfLeversTouched() {
+    this.players.forEach((currentPlayer: Player, key: string) => {
+      for (let leverIndex = 0; leverIndex < this.map.levers.length; ++leverIndex) {
+        let currentLever = this.map.levers[leverIndex];
+  
+        if (!currentLever.isTouched) {
+          // Levers are on the side of an obstacle, but are generated from the selected point to the next point in the list
+          const selectedObstacleForLever = this.map.obstacles.find(obstacle => obstacle.id == currentLever.polygonId)
+          const firstPointForLever = selectedObstacleForLever.points[currentLever.side]
+          const secondPointForLever = selectedObstacleForLever.points[(currentLever.side + 1) % selectedObstacleForLever.points.length]
+          const distanceToLever = this.calculateDistanceBetweenLineAndPoint(firstPointForLever.x, firstPointForLever.y,secondPointForLever.x, secondPointForLever.y, currentPlayer.position.x, currentPlayer.position.y)
+          if (distanceToLever < 10) {
+            currentLever.isTouched = true;
+            this.players.forEach((player: Player, key: string) => {
+              player.socket.emit(Constants.LEVER_IS_TOUCHED, leverIndex)
+            })
+          }
+        }
+      }
     })
+  }
+
+  // TODO: This formula is between point and infinite line (not finite line)
+  calculateDistanceBetweenLineAndPoint(x1: number, y1: number, x2: number, y2: number, pointX: number, pointY: number) {
+    let A = pointX - x1;
+    let B = pointY - y1;
+    let C = x2 - x1;
+    let D = y2 - y1;
+
+    let dot = A * C + B * D;
+    let len_sq = C * C + D * D;
+    let param = -1;
+    if (len_sq != 0) //in case of 0 length line
+        param = dot / len_sq;
+
+        let xx, yy;
+
+    if (param < 0) {
+      xx = x1;
+      yy = y1;
+    }
+    else if (param > 1) {
+      xx = x2;
+      yy = y2;
+    }
+    else {
+      xx = x1 + param * C;
+      yy = y1 + param * D;
+    }
+
+    let dx = pointX - xx;
+    let dy = pointY - yy;
+    return Math.sqrt(dx * dx + dy * dy);
   }
 
   didDarkPlayersWin() {
@@ -325,6 +372,9 @@ export default class Game {
     if (this.lightPlayer) {
       this.checkIfLightContainsPlayer();
     }
+
+    // Check if levers have been touched
+    this.checkIfLeversTouched()
 
     // Check if any players are dead
     // IDK if we want to handle this on the frontend or not.
