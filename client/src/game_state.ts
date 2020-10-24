@@ -64,7 +64,9 @@ export class GameState extends Phaser.Scene {
   flashlightHealth = 100;
   isFlashlight = true; // Whether the vision of this player is of a flashlight form (not whether they are on the light team)
 
-  graphics: Phaser.GameObjects.Graphics;
+  dynamicGraphics: Phaser.GameObjects.Graphics;
+  lightGraphics: Phaser.GameObjects.Graphics;
+  staticGraphics: Phaser.GameObjects.Graphics;
   maskGraphics: Phaser.GameObjects.Graphics;
 
     constructor(config: string | Phaser.Types.Scenes.SettingsConfig) {
@@ -106,8 +108,18 @@ export class GameState extends Phaser.Scene {
   }
 
    create() {
-    this.graphics = this.add.graphics({ x: 0, y: 0, lineStyle: { width: 4, color: 0xaa00aa } });
-    this.maskGraphics = this.add.graphics({ x: 0, y: 0, lineStyle: { width: 4, color: 0xaa00aa } });
+    // NOTE: The order of graphics generated is the z-value of the graphics drawn
+    this.staticGraphics = this.add.graphics({x: 0, y: 0, lineStyle: { width: 4, color: 0xaa00aa } });
+    this.lightGraphics = this.add.graphics({ x: 0, y: 0, lineStyle: { width: 4, color: 0xaa00aa } });
+    this.dynamicGraphics = this.add.graphics({ x: 0, y: 0, lineStyle: { width: 4, color: 0xaa00aa } });
+    this.maskGraphics = this.add.graphics({ x: 0, y: 0, lineStyle: { width: 20, color: 0xffffff, alpha: 0.5 } });
+
+    // Rules for the alpha mask
+    this.maskGraphics.visible = false;
+    const geometryMask = new Phaser.Display.Masks.GeometryMask(this, this.maskGraphics);
+    this.lightGraphics.mask = geometryMask;
+    this.staticGraphics.mask = geometryMask;
+    this.dynamicGraphics.mask = geometryMask;
 
     // Setup controls for user
     this.keyUP = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
@@ -119,6 +131,14 @@ export class GameState extends Phaser.Scene {
     
     this.keyExpandLight = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Q);
     this.keyRestrictLight = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
+
+    // Draw the room using the static graphics object
+    for (let index = 0; index < this.numPolygons; ++index) {
+      const currentPolygon = this.obstacles[index]
+      this.staticGraphics.fillStyle(currentPolygon.color)
+      const interpretablePoints: Phaser.Geom.Point[] = currentPolygon.points.map((maplocation: MapLocation) => new Phaser.Geom.Point(maplocation.x, maplocation.y))
+      this.staticGraphics.fillPoints(interpretablePoints, true);
+    }
 
     // Camera settings
     this.cameras.main.setBounds(0, 0, GameState.roomWidth + 90, GameState.roomWidth);
@@ -151,35 +171,22 @@ export class GameState extends Phaser.Scene {
 
   drawPlayerHealthbar(player: PlayerClient) {
     // Temporary healthbars for this player
-    this.graphics.fillStyle(0xffffff, 0.5)
-    this.graphics.fillRect(player.x - 50, player.y - 20, 100, 10);
-    this.graphics.fillStyle(player.hp, 1.0)
-    this.graphics.fillRect(player.x - 50, player.y - 20, player.hp, 10);
+    this.dynamicGraphics.fillStyle(0xffffff, 0.5)
+    this.dynamicGraphics.fillRect(player.x - 50, player.y - 20, 100, 10);
+    this.dynamicGraphics.fillStyle(player.hp, 1.0)
+    this.dynamicGraphics.fillRect(player.x - 50, player.y - 20, player.hp, 10);
   }
   
   // Is called on every frame
   update() {
 
     // Significantly enhances performance by removing previously rendered objects
-    this.graphics.clear()
+    this.dynamicGraphics.clear();
+    this.lightGraphics.clear();
     this.maskGraphics.clear();
 
-    // TODO: Uncomment these next lines to apply an alpha Mask for the light sources
-    // if (this.light_polygon.points.length > 2) {
-    //   this.maskGraphics.fillPoints(this.light_polygon.points, true);
-    // }
-    // this.graphics.mask = new Phaser.Display.Masks.GeometryMask(this, this.maskGraphics);
   
     this.handlePlayerKeyboardInput()
-  
-    // TODO: Not sure if this can be optimized as an image
-    for (let index = 0; index < this.numPolygons; ++index) {
-      const currentPolygon = this.obstacles[index]
-      this.graphics.fillStyle(currentPolygon.color)
-      // TODO: Do not calculate this every frame
-      const interpretablePoints: Phaser.Geom.Point[] = currentPolygon.points.map((maplocation: MapLocation) => new Phaser.Geom.Point(maplocation.x, maplocation.y))
-      this.graphics.fillPoints(interpretablePoints, true);
-    }
 
     // Draw players and their respective information (when they are returned by the server)
     if (this.players) {
@@ -198,9 +205,11 @@ export class GameState extends Phaser.Scene {
         // Color is depending if the person is the light or dark team
         // TODO: Since light player ids is not defined until the game has started, we check for its existance first (should probably change later, because everyone is dark player for a moment)
         if (this.lightPlayerIds && this.lightPlayerIds.includes(currentPlayer.id)) { 
-          this.graphics.fillStyle(0xffff00)
+          // Brighten the area seen with a slight white light
+          this.lightGraphics.fillStyle(0xffffff, 0.1)
         } else {
-          this.graphics.fillStyle(0x0a0a0a)
+          // Don't add any flare for what dark players see
+          this.lightGraphics.fillStyle(0x0a0a0a, 0)
         }
 
         // TODO: Not sure why there is a bug that the polygon points are not more than 2 points (maybe the polygon points are undefined)
@@ -208,49 +217,48 @@ export class GameState extends Phaser.Scene {
           // If this player is on the light team, then draw only players that are on the light team
           if (this.lightPlayerIds && this.lightPlayerIds.includes(this.playerId)) {
             if (this.lightPlayerIds.includes(currentPlayer.id)) {
-              this.graphics.fillPoints(visionPolygon.points, true);
+              // Apply an alpha mask for the light sources on light team
+              this.maskGraphics.fillPoints(visionPolygon.points, true);
+              this.lightGraphics.fillPoints(visionPolygon.points, true);
             }
           } else {
             // If this player is on the dark team, then draw everyone's vision polygons
-            this.graphics.fillPoints(visionPolygon.points, true);
+            // Apply an alpha mask for the light sources on light team
+            this.maskGraphics.fillPoints(visionPolygon.points, true);
+            // this.lightGraphics.fillPoints(visionPolygon.points, true);
           }
         }
-      }
-      
-      // Draw players in separate for-loop so as to maintain a high z-index for drawing
-      // TODO: Find a better way to do z-index drawing without 2 for loops
-      for (let index = 0; index < numPlayers; ++index) {
-        const currentPlayer = this.players[index];
-        
+
+        // Draw players using separate graphics object so as to maintain a high z-index for drawing
         // Color is depending if it is this person (red for this, blue for other)
         if (currentPlayer.id == this.playerId) {
-          this.graphics.fillStyle(0xff0000) 
+          this.dynamicGraphics.fillStyle(0xff0000) 
         } else {
-          this.graphics.fillStyle(0x0000ff);
+          this.dynamicGraphics.fillStyle(0x0000ff);
         }
 
         // Only draw positions of players on same team if it is light team
         if (this.lightPlayerIds && this.lightPlayerIds.includes(this.playerId)) {
           if (this.lightPlayerIds.includes(currentPlayer.id)) {
-            this.graphics.fillCircle(currentPlayer.x, currentPlayer.y, 5);
+            this.dynamicGraphics.fillCircle(currentPlayer.x, currentPlayer.y, 5);
             this.drawPlayerHealthbar(currentPlayer);
           } else {
             // However, draw a dark-team player if it ends up in the light
             if (currentPlayer.isInLight) {
-              this.graphics.fillCircle(currentPlayer.x, currentPlayer.y, 5);
+              this.dynamicGraphics.fillCircle(currentPlayer.x, currentPlayer.y, 5);
               this.drawPlayerHealthbar(currentPlayer);
             }
           }
         } else {
           // Otherwise, dark players know where everyone is
-          this.graphics.fillCircle(currentPlayer.x, currentPlayer.y, 5);
+          this.dynamicGraphics.fillCircle(currentPlayer.x, currentPlayer.y, 5);
           this.drawPlayerHealthbar(currentPlayer);
         }
 
         // Draw levers for dark players
         // 16777215 is the max number 0xffffff for color
         const randomColor = Math.floor(Math.random() * 16777216)
-        this.graphics.lineStyle(5, randomColor, 1)
+        this.dynamicGraphics.lineStyle(5, randomColor, 1)
         if (this.lightPlayerIds && !this.lightPlayerIds.includes(this.playerId)) {
           for (let leverIndex = 0; leverIndex < this.levers.length; ++leverIndex) {
             const currentLever = this.levers[leverIndex];
@@ -259,7 +267,7 @@ export class GameState extends Phaser.Scene {
             const selectedObstacleForLever = this.obstacles.find(obstacle => obstacle.id == currentLever.polygonId)
             const firstPointForLever = selectedObstacleForLever.points[currentLever.side]
             const secondPointForLever = selectedObstacleForLever.points[(currentLever.side + 1) % selectedObstacleForLever.points.length]
-            this.graphics.lineBetween(firstPointForLever.x, firstPointForLever.y,secondPointForLever.x, secondPointForLever.y)
+            this.dynamicGraphics.lineBetween(firstPointForLever.x, firstPointForLever.y,secondPointForLever.x, secondPointForLever.y)
           }
         }
       }
