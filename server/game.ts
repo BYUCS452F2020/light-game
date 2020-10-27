@@ -1,22 +1,28 @@
 import { Socket } from 'socket.io';
 import * as Encoder from '../shared/encoder';
 import { GameMap, Player, LightPlayer, getRandomInt } from './domain';
+import { v4 as uuidv4 } from 'uuid';
 
 import { MapLocation, Line } from '../shared/models'
 import { priorityQueue } from '../shared/priority_queue';
 import { calculateRayPolygon } from '../shared/vision_calculator';
 import { Constants } from '../shared/constants';
 import { Point } from '../shared/point';
+import { DatabaseManager } from './databaseManager';
 
 export default class Game {
 
   players: Map<string, Player>
+  gameId: string
   map: GameMap
-  lastUpdateTime
+  lastUpdateTime: number
   lightPlayer: Player
+  databaseManager: DatabaseManager
 
   constructor() {
+    this.gameId = uuidv4();
     this.players = new Map();
+    this.databaseManager = new DatabaseManager();
     this.map = new GameMap(2);
     this.lastUpdateTime = Date.now();
     setInterval(this.update.bind(this), 1000 / 60);
@@ -30,7 +36,12 @@ export default class Game {
     return playerArray;
   }
 
-  start() {
+  start(players: Player[]) {
+    // TODO: This is just copying and pasting the players one at a time
+    players.forEach(player => {
+        this.addPlayer(player)
+    });
+
     // Needs at least 2 players and the game map ready to send
     const isGameReadyToStart = (this.players ? this.players.size > 1 : false) && this.map.isGameMapGenerated
 
@@ -60,8 +71,7 @@ export default class Game {
     })
   }
 
-  addPlayer(socket: Socket, username: string) {
-
+  addPlayer(player: Player) {
 
     // Generate a position to start this player at.
     const x = this.map.width * (0.25 + Math.random() * 0.5);
@@ -69,11 +79,11 @@ export default class Game {
     console.log("ADDING PLAYER!")
     console.log(x,y)
 
-    // TODO: If two people join at the same time, this could be a bug
-    const uniquePlayerId = this.players.size
-    const newPlayer = new Player(username, uniquePlayerId, socket, new MapLocation(x, y), 90 * Math.PI/180, 90 * Math.PI/180)
-    this.players.set(socket.id, newPlayer)
-    socket.emit(Constants.MSG_TYPES_JOIN_GAME, {x, y, id: uniquePlayerId})
+    const newPlayer = new Player(player.username, player.id, player.socket, new MapLocation(x, y), 90 * Math.PI/180, 90 * Math.PI/180)
+    this.players.set(player.socket.id, newPlayer)
+
+    // TODO: Not received or used by client applications
+    player.socket.emit(Constants.MSG_TYPES_JOIN_GAME, {x, y, id: player.id})
   }
 
   // Movements for players, and collision checking
@@ -362,6 +372,8 @@ export default class Game {
     
   }
 
+  isGameOverRecorded: boolean = false
+
   update() {
     // Calculate time elapsed
     const now = Date.now();
@@ -398,12 +410,30 @@ export default class Game {
     const didLightPlayersWin = this.didLightPlayersWin();
 
     if (didDarkPlayersWin || didLightPlayersWin) {
-      // Send a game update to each player 
+      if (!this.isGameOverRecorded) {
+        const sqlCompatiblePlayers: {playerId: number, isLightPlayer: boolean, isWinner: boolean}[] = []
+        let array = Array.from(this.players);
+        for (let playerIndex = 0; playerIndex < array.length; ++playerIndex) {
+          const currentPlayer = array[playerIndex][1];
+
+          // TODO: Supports only one light player per game so far
+          const isLightPlayerTeam = this.lightPlayer.id == currentPlayer.id
+          sqlCompatiblePlayers.push({
+            playerId: currentPlayer.id, // TODO: Player ids are numbers, not uuids
+            isLightPlayer: isLightPlayerTeam, // TODO: Player does not store what team they are on (the game takes care of this)
+            isWinner: (isLightPlayerTeam && didLightPlayersWin) || (!isLightPlayerTeam && didDarkPlayersWin) 
+          })
+        }
+
+        this.databaseManager.writeGameResults(this.gameId, sqlCompatiblePlayers)
+        this.isGameOverRecorded = true;
+      }
+
+      // Send the game over update to each player in the game
       this.players.forEach(player => {
         player.socket.emit(Constants.MSG_TYPES_GAME_OVER, didLightPlayersWin ? 1 : 0);
       });
     }
-
   }
 
 

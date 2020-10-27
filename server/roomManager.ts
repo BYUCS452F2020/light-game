@@ -4,33 +4,42 @@ import { Socket } from 'socket.io';
 import Game from './game';
 import { Constants } from '../shared/constants';
 import { clearInterval } from 'timers';
+import { DatabaseManager } from './databaseManager';
 
 export class RoomManager {
 
     rooms: Map<string, Player[]>
     waitingRoomUsernamePings: Map<string, NodeJS.Timeout>
+    databaseManager: DatabaseManager
 
     constructor() {
+        this.databaseManager = new DatabaseManager();
         this.rooms = new Map()
         this.waitingRoomUsernamePings = new Map()
     }
 
-    joinRoom(roomId:string, socket:Socket, username:string) {
+    async joinRoom(roomId:string, socket:Socket, playerId:number) {
         let room = this.rooms.get(roomId)
         if(room == null) {
-            socket.emit(Constants.JOIN_ROOM_FAIL)
+            socket.emit(Constants.JOIN_ROOM_FAIL, "Room doesn't exist")
+            return
+        }
+        if (room.find(player => player.id == playerId) !== undefined) {
+            socket.emit(Constants.JOIN_ROOM_FAIL, "You cannot join the same game twice")
             return
         }
         // TODO: Error checking on room not existing yet
-        const player = new Player(username, room.length, socket, null, null, null)
+        const username = await this.databaseManager.getPlayerUsername(playerId)
+        const player = new Player(username, playerId, socket, null, null, null)
         room.push(player)
         console.log(`PLAYER JOINED ROOM: ${socket.id}, ${username}, ${roomId}`)
         this.rooms.set(roomId, room)
         socket.emit(Constants.JOIN_ROOM_SUCCESS, roomId)
     }
 
-    createRoom(socket:Socket, username:string) {
-        const player = new Player(username, 1, socket, null, null, null)
+    async createRoom(socket:Socket, playerId:number) {
+        const username = await this.databaseManager.getPlayerUsername(playerId)
+        const player = new Player(username, playerId, socket, null, null, null)
         const roomId = uuid().substring(0,4)
         console.log(`User ${username} create room ${roomId}`);
         console.log(`PLAYER CREATED ROOM: ${socket.id}, ${username}, ${roomId}`)
@@ -79,11 +88,8 @@ export class RoomManager {
         // if(!players) {
         //     return "invalid roomId"
         // }
-        players.forEach(player => {
-            game.addPlayer(player.socket, player.username)
-        });
         // When a game is started all of it's players get notified
-        game.start();
+        game.start(players);
 
         this.deleteRoom(roomId)
         return game

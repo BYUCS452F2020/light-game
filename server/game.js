@@ -21,12 +21,17 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const Encoder = __importStar(require("../shared/encoder"));
 const domain_1 = require("./domain");
+const uuid_1 = require("uuid");
 const models_1 = require("../shared/models");
 const vision_calculator_1 = require("../shared/vision_calculator");
 const constants_1 = require("../shared/constants");
+const databaseManager_1 = require("./databaseManager");
 class Game {
     constructor() {
+        this.isGameOverRecorded = false;
+        this.gameId = uuid_1.v4();
         this.players = new Map();
+        this.databaseManager = new databaseManager_1.DatabaseManager();
         this.map = new domain_1.GameMap(2);
         this.lastUpdateTime = Date.now();
         setInterval(this.update.bind(this), 1000 / 60);
@@ -38,7 +43,10 @@ class Game {
         });
         return playerArray;
     }
-    start() {
+    start(players) {
+        players.forEach(player => {
+            this.addPlayer(player);
+        });
         const isGameReadyToStart = (this.players ? this.players.size > 1 : false) && this.map.isGameMapGenerated;
         let [_, lightPlayer] = Array.from(this.players)[domain_1.getRandomInt(this.players.size)];
         this.lightPlayer = lightPlayer;
@@ -58,15 +66,14 @@ class Game {
             player.socket.emit(constants_1.Constants.MSG_TYPES_START_GAME + "_SUCCESS", { map: jsonMap, players: this.generatePlayerArray(), lightPlayerIds: `[${this.lightPlayer.id}, -1]` });
         });
     }
-    addPlayer(socket, username) {
+    addPlayer(player) {
         const x = this.map.width * (0.25 + Math.random() * 0.5);
         const y = this.map.height * (0.25 + Math.random() * 0.5);
         console.log("ADDING PLAYER!");
         console.log(x, y);
-        const uniquePlayerId = this.players.size;
-        const newPlayer = new domain_1.Player(username, uniquePlayerId, socket, new models_1.MapLocation(x, y), 90 * Math.PI / 180, 90 * Math.PI / 180);
-        this.players.set(socket.id, newPlayer);
-        socket.emit(constants_1.Constants.MSG_TYPES_JOIN_GAME, { x, y, id: uniquePlayerId });
+        const newPlayer = new domain_1.Player(player.username, player.id, player.socket, new models_1.MapLocation(x, y), 90 * Math.PI / 180, 90 * Math.PI / 180);
+        this.players.set(player.socket.id, newPlayer);
+        player.socket.emit(constants_1.Constants.MSG_TYPES_JOIN_GAME, { x, y, id: player.id });
     }
     handleMovement(currentX, currentY, nextPointX, nextPointY) {
         const diffX = nextPointX - currentX;
@@ -293,6 +300,21 @@ class Game {
         const didDarkPlayersWin = this.didDarkPlayersWin();
         const didLightPlayersWin = this.didLightPlayersWin();
         if (didDarkPlayersWin || didLightPlayersWin) {
+            if (!this.isGameOverRecorded) {
+                const sqlCompatiblePlayers = [];
+                let array = Array.from(this.players);
+                for (let playerIndex = 0; playerIndex < array.length; ++playerIndex) {
+                    const currentPlayer = array[playerIndex][1];
+                    const isLightPlayerTeam = this.lightPlayer.id == currentPlayer.id;
+                    sqlCompatiblePlayers.push({
+                        playerId: currentPlayer.id,
+                        isLightPlayer: isLightPlayerTeam,
+                        isWinner: (isLightPlayerTeam && didLightPlayersWin) || (!isLightPlayerTeam && didDarkPlayersWin)
+                    });
+                }
+                this.databaseManager.writeGameResults(this.gameId, sqlCompatiblePlayers);
+                this.isGameOverRecorded = true;
+            }
             this.players.forEach(player => {
                 player.socket.emit(constants_1.Constants.MSG_TYPES_GAME_OVER, didLightPlayersWin ? 1 : 0);
             });

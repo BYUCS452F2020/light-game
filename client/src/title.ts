@@ -9,13 +9,26 @@ export class TitleScene extends Phaser.Scene {
     startRoomButton: Phaser.GameObjects.Text;
     joinRoomButton: Phaser.GameObjects.Text;
 
-    // TODO: Pass to other scene for game
-    playerUsername: string = "Test-UserName-" + Math.floor(Math.random() * 1000); // TODO: Not always unique
+    // Get from authentication scene
+    playerUsername: string = null;
+    playerId: number = null;
+
+    totalGamesPlayed: number = 0;
+    totalLightWins: number = 0;
+    totalLightGames: number = 0;
+    totalDarkWins: number = 0;
+    totalDarkGames: number = 0;
 
     constructor(config: string | Phaser.Types.Scenes.SettingsConfig) {
         super('title')
         console.log("STARTED TITLE")
-        this.socketClient = ioclient(process.env.SERVER_HOST);
+    }
+
+    init(data) {
+        console.log('init Title', data);
+        this.playerId = data.playerId;
+        this.playerUsername = data.playerUsername;
+        this.socketClient = data.socketClient;
     }
 
     preload() {
@@ -55,6 +68,8 @@ export class TitleScene extends Phaser.Scene {
         .on('pointerover', () => this.joinRoomButton.setStyle({ fill: '#ff0'}))
         .on('pointerout', () => this.joinRoomButton.setStyle({ fill: '#0f0'}));
 
+        this.add.text(10, 10, `Username: ${this.playerUsername}`, { fill: '#0f0', fontSize: '30px' })
+
         this.scale.on('resize', (gameSize, baseSize, displaySize, resolution, previousWidth, previousHeight) => {
             // console.log(`${displaySize['width']},${displaySize['height']}`)
             // // game size stays the same (it is set on load, defined by the config object of the game)
@@ -73,27 +88,45 @@ export class TitleScene extends Phaser.Scene {
             this.socketClient.on(Constants.ROOM_CREATED, (roomId: string) => {
                 // Join the loading room if successful
                 console.log(`CREATING WAITING ROOM for ${roomId}`)
-                this.scene.start('room', {playerUsername: this.playerUsername, roomId, socketClient: this.socketClient});
+                this.scene.start('room', {playerId: this.playerId, playerUsername: this.playerUsername, roomId, socketClient: this.socketClient});
             })
 
             this.socketClient.on(Constants.JOIN_ROOM_SUCCESS, (roomId: string) => {
                 // Join the loading room if successful
                 console.log(`LOADING WAITING ROOM for ${roomId}`)
-                this.scene.start('room', {playerUsername: this.playerUsername, roomId, socketClient: this.socketClient});
+                this.scene.start('room', {playerId: this.playerId, playerUsername: this.playerUsername, roomId, socketClient: this.socketClient});
             })
-            this.socketClient.on(Constants.JOIN_ROOM_FAIL, () => {
-                console.log("Failed to join room");
+            this.socketClient.on(Constants.JOIN_ROOM_FAIL, (reason: string) => {
+                console.log(`Failed to join room: ${reason}`);
+            })
+
+            this.socketClient.on(Constants.GET_PLAYER_STATS, (data: object) => {
+                if (data) {
+                    this.totalGamesPlayed = data['TotalGamesPlayed']
+                    this.totalDarkWins = data['TotalDarkWins']
+                    this.totalDarkGames = data['TotalDarkPlays']
+                    this.totalLightWins = data['TotalLightWins']
+                    this.totalLightGames = data['TotalLightPlays']
+
+                    this.add.text(10, 40, `Total Games Played: ${this.totalGamesPlayed}`, { fill: '#0f0', fontSize: '20px' })
+                    this.add.text(10, 60, `Total Wins (Light Team): ${this.totalLightWins}/${this.totalLightGames}`, { fill: '#0f0', fontSize: '20px' })
+                    this.add.text(10, 80, `Total Wins (Dark Team): ${this.totalDarkWins}/${this.totalDarkGames}`, { fill: '#0f0', fontSize: '20px' })
+                } else {
+                    console.error("Failed to get user stats")
+                }
             })
         }
+
+        this.socketClient.emit(Constants.GET_PLAYER_STATS, this.playerId)
     }
     
     startRoom() {
-        this.socketClient.emit(Constants.CREATE_ROOM, this.playerUsername);
+        this.socketClient.emit(Constants.CREATE_ROOM, this.playerId);
     }
 
     joinRoom(roomId) {
         // TODO: Verify roomid before launching the room scene
-        this.socketClient.emit(Constants.JOIN_ROOM, {roomId, username: this.playerUsername});
+        this.socketClient.emit(Constants.JOIN_ROOM, {roomId, playerId: this.playerId});
     }
 
     upload() {

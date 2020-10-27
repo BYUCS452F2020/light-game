@@ -17,4 +17,6 @@ var Constants;
     Constants["LEAVE_ROOM_SUCCESS"] = "leave_room_suc";
     Constants["ROOM_WAITING_PLAYERS_RESPONSE"] = "room_waiting_players_response";
     Constants["LEVER_IS_TOUCHED"] = "lever_is_touched";
+    Constants["GET_PLAYER_STATS"] = "get_player_stats";
+    Constants["CREATE_USERNAME"] = "create_username";
 })(Constants = exports.Constants || (exports.Constants = {}));

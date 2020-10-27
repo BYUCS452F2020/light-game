@@ -11,17 +11,18 @@ import webpackConfig from '../client/webpack.common.js';
 import { Socket } from 'socket.io';
 import Game from './game';
 import { RoomManager } from "./roomManager";
-
+import { DatabaseManager } from "./databaseManager";
 
 export class Server {
 
-
   app:Application
   roomManager:RoomManager
+  databaseManager:DatabaseManager
   games: Map<string, Game> = new Map();
 
  constructor() {
    this.roomManager = new RoomManager()
+   this.databaseManager = new DatabaseManager();
    this.app = express();
    
    this.app.use((req,res, next)=> {console.log(req.url); next()})
@@ -31,7 +32,7 @@ export class Server {
 
    this.app.all("/ping", (req, res) => {
      res.sendStatus(200)
-   })  
+   })
  }
 
  run = () => {
@@ -49,21 +50,30 @@ export class Server {
     // This socket will be associated with one game at a time
     var gameForThisSocket: Game = null;
 
+    // Related to database manager and simple querying-inserting
+    socket.on(Constants.GET_PLAYER_STATS, (playerId: number) => {
+      this.databaseManager.getPlayerStats(socket, playerId)
+    });
+
+    socket.on(Constants.CREATE_USERNAME, (username: string) => {
+      this.databaseManager.createPlayer(socket, username)
+    })
+
     // object consists of {roomId: string, username: string}
     socket.on(Constants.JOIN_ROOM, (data: object) => {
       console.log(`ATTEMPTING TO JOIN ROOM:`)
       const roomId = data['roomId']
-      const username = data['username']
-      this.roomManager.joinRoom(roomId ,socket, username);
+      const playerId = data['playerId']
+      this.roomManager.joinRoom(roomId, socket, playerId);
     });
 
-    socket.on(Constants.CREATE_ROOM, (username: string) => {
-      this.roomManager.createRoom(socket, username);
+    socket.on(Constants.CREATE_ROOM, (playerId: number) => {
+      this.roomManager.createRoom(socket, playerId);
     });
 
     socket.on(Constants.LEAVE_ROOM, (data: object) => {
       const roomId = data['roomId']
-      const username = data['username']
+      const username = data['playerId']
       this.roomManager.leaveRoom(socket, roomId, username);
     });
 

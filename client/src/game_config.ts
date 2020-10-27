@@ -2,6 +2,7 @@ import * as Phaser from 'phaser'
 import { GameState } from './game_state'
 import { TitleScene } from './title'
 import { RoomScene } from './room'
+import { AuthenticationScene } from './authentication'
 
 export class GameConfig {
     config: Phaser.Types.Core.GameConfig;
@@ -28,7 +29,7 @@ export class GameConfig {
           dom: {
             createContainer: true
           },
-          scene: [TitleScene, RoomScene, scene]
+          scene: [AuthenticationScene, TitleScene, RoomScene, scene]
       }
     }
 

@@ -9,6 +9,7 @@ const path_1 = __importDefault(require("path"));
 const socket_io_1 = __importDefault(require("socket.io"));
 const constants_1 = require("../shared/constants");
 const roomManager_1 = require("./roomManager");
+const databaseManager_1 = require("./databaseManager");
 class Server {
     constructor() {
         this.games = new Map();
@@ -20,18 +21,24 @@ class Server {
             io.on('connection', (socket) => {
                 console.log('Player connected!', socket.id);
                 var gameForThisSocket = null;
+                socket.on(constants_1.Constants.GET_PLAYER_STATS, (playerId) => {
+                    this.databaseManager.getPlayerStats(socket, playerId);
+                });
+                socket.on(constants_1.Constants.CREATE_USERNAME, (username) => {
+                    this.databaseManager.createPlayer(socket, username);
+                });
                 socket.on(constants_1.Constants.JOIN_ROOM, (data) => {
                     console.log(`ATTEMPTING TO JOIN ROOM:`);
                     const roomId = data['roomId'];
-                    const username = data['username'];
-                    this.roomManager.joinRoom(roomId, socket, username);
+                    const playerId = data['playerId'];
+                    this.roomManager.joinRoom(roomId, socket, playerId);
                 });
-                socket.on(constants_1.Constants.CREATE_ROOM, (username) => {
-                    this.roomManager.createRoom(socket, username);
+                socket.on(constants_1.Constants.CREATE_ROOM, (playerId) => {
+                    this.roomManager.createRoom(socket, playerId);
                 });
                 socket.on(constants_1.Constants.LEAVE_ROOM, (data) => {
                     const roomId = data['roomId'];
-                    const username = data['username'];
+                    const username = data['playerId'];
                     this.roomManager.leaveRoom(socket, roomId, username);
                 });
                 socket.on(constants_1.Constants.MSG_TYPES_START_GAME, (roomId) => {
@@ -56,6 +63,7 @@ class Server {
             });
         };
         this.roomManager = new roomManager_1.RoomManager();
+        this.databaseManager = new databaseManager_1.DatabaseManager();
         this.app = express_1.default();
         this.app.use((req, res, next) => { console.log(req.url); next(); });
         this.app.use(express_1.default.static(path_1.default.join(__dirname, '../public')));

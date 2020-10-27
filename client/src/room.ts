@@ -13,6 +13,7 @@ export class RoomScene extends Phaser.Scene {
 
     // Get this from title scene AND pass to other scene for game
     playerUsername: string = null;
+    playerId: string = null;
 
     // Get this from title scene
     roomId: string = null;
@@ -26,6 +27,7 @@ export class RoomScene extends Phaser.Scene {
 
     init(data) {
         console.log('init ROOM', data);
+        this.playerId = data.playerId;
         this.playerUsername = data.playerUsername;
         this.roomId = data.roomId;
         this.socketClient = data.socketClient;
@@ -105,20 +107,16 @@ export class RoomScene extends Phaser.Scene {
 
                 const playerInformationArray = startGameObject['players'];
                 const numPlayers = playerInformationArray.length;
-                let playerId = -1;
                 for (let playerIndex = 0; playerIndex < numPlayers; ++playerIndex) {
                     const currentPlayerInformation = playerInformationArray[playerIndex];
-                    if (currentPlayerInformation['username'] == this.playerUsername) {
-                        playerId = currentPlayerInformation['id']
+                    if (currentPlayerInformation['id'] == this.playerId) {
+                        // We have confirmed this player is in the game he/she joined
+                        // TODO: What if the player is not found in the game?
+                        break;
                     }
                 }
-
-                // TODO: What to do if server breaks, or player joins game not allowed to?
-                if (playerId == -1) {
-                    return;
-                }
                 
-                this.scene.start('game', {socketClient: this.socketClient, playerId, playerUsername: this.playerUsername, roomId: this.roomId, lightPlayerIds, roomWidth, roomHeight, numEdges, numPoints, numPolygons, allEdges, allPoints, obstacles, levers});
+                this.scene.start('game', {socketClient: this.socketClient, playerId: this.playerId, playerUsername: this.playerUsername, roomId: this.roomId, lightPlayerIds, roomWidth, roomHeight, numEdges, numPoints, numPolygons, allEdges, allPoints, obstacles, levers});
             })
 
             this.socketClient.on(Constants.MSG_TYPES_START_GAME + "_FAILURE", () => {
@@ -161,7 +159,7 @@ export class RoomScene extends Phaser.Scene {
     }
 
     backButtonAction() {
-        this.socketClient.emit(Constants.LEAVE_ROOM, {roomId: this.roomId, username: this.playerUsername});
+        this.socketClient.emit(Constants.LEAVE_ROOM, {roomId: this.roomId, playerId: this.playerId});
     }
 
     upload() {

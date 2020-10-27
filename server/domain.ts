@@ -148,7 +148,7 @@ export class Player {
     username: string
     hp: number
     socket:Socket
-    id:number
+    id: number
     visionDirection: number
     visionAngle: number
     isInLight: boolean
