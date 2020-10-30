@@ -176,7 +176,7 @@ class Game {
     handleMovementInput(socket, encodedMessage) {
         const player = this.players.get(socket.id);
         if (!player) {
-            throw new Error();
+            return;
         }
         let playerInput = Encoder.decodeInput(encodedMessage);
         let nextPointX = player.position.x;

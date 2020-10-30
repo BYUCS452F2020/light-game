@@ -231,7 +231,9 @@ export default class Game {
     const player = this.players.get(socket.id)
     if (!player) {
       // Assuming players cannot try to address movement before they are registered, throw an error if they try to
-      throw new Error()
+      return
+      // TODO: What happens when players are disconnected from the game from network change unexpectedly? 
+      //throw new Error()
     }
 
     let playerInput = Encoder.decodeInput(encodedMessage)
