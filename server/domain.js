@@ -15,12 +15,12 @@ class GameMap {
         this.obstacles = [];
         this.levers = [];
         const a1 = [new models_1.MapLocation(400, 100), new models_1.MapLocation(200, 278), new models_1.MapLocation(340, 430), new models_1.MapLocation(650, 80)];
-        const ob1 = new models_1.Obstacle(a1, 0x00aa0);
+        const ob1 = new models_1.Obstacle(a1, 0x2980B9);
         const a2 = [new models_1.MapLocation(0, 0), new models_1.MapLocation(this.width, 0), new models_1.MapLocation(this.width, this.height), new models_1.MapLocation(0, this.height)];
-        const ob2 = new models_1.Obstacle(a2, 0x0000aa);
+        const ob2 = new models_1.Obstacle(a2, 0xD8DFDE);
         const a3 = [new models_1.MapLocation(200, 200), new models_1.MapLocation(300, 278), new models_1.MapLocation(340, 430)];
-        const ob3 = new models_1.Obstacle(a3, 0xaaaa00);
-        this.obstacles = [ob1, ob2, ob3];
+        const ob3 = new models_1.Obstacle(a3, 0xCF0010);
+        this.obstacles = [ob2, ob1, ob3];
         const NUM_LEVERS = 3;
         for (let i = 0; i < NUM_LEVERS; i++) {
             this.levers.push(new models_1.Lever(this.obstacles[getRandomInt(this.obstacles.length - 1)]));

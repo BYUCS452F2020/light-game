@@ -29,17 +29,16 @@ export class GameMap {
         this.obstacles = []
         this.levers = []
         
-
         const a1 = [new MapLocation(400, 100), new MapLocation(200, 278), new MapLocation(340, 430), new MapLocation(650, 80)]
-        const ob1 = new Obstacle(a1, 0x00aa0)
-
+        const ob1 = new Obstacle(a1, 0x2980B9)
+        
         const a2 = [new MapLocation(0, 0), new MapLocation(this.width, 0), new MapLocation(this.width, this.height), new MapLocation(0, this.height)]
-        const ob2 = new Obstacle(a2, 0x0000aa)
+        const ob2 = new Obstacle(a2, 0xD8DFDE)
 
         const a3 = [new MapLocation(200, 200), new MapLocation(300, 278), new MapLocation(340, 430)]
-        const ob3 = new Obstacle(a3, 0xaaaa00)
+        const ob3 = new Obstacle(a3, 0xCF0010)
 
-        this.obstacles = [ob1, ob2, ob3]
+        this.obstacles = [ob2, ob1, ob3]
 
         // set levers
         const NUM_LEVERS = 3

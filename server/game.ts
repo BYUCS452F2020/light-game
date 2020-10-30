@@ -3,7 +3,7 @@ import * as Encoder from '../shared/encoder';
 import { GameMap, Player, LightPlayer, getRandomInt } from './domain';
 import { v4 as uuidv4 } from 'uuid';
 
-import { MapLocation, Line } from '../shared/models'
+import { MapLocation, Line, Obstacle } from '../shared/models'
 import { priorityQueue } from '../shared/priority_queue';
 import { calculateRayPolygon } from '../shared/vision_calculator';
 import { Constants } from '../shared/constants';
@@ -29,18 +29,17 @@ export default class Game {
   }
 
   generatePlayerArray() {
-    let playerArray: {username: string, id: number, position: MapLocation, hp: number}[] = [];
+    let playerArray: { username: string, id: number, position: MapLocation, hp: number }[] = [];
     this.players.forEach((value: Player, key: string) => {
-      playerArray.push({username: value.username, id: value.id, position: value.position, hp: value.hp})
+      playerArray.push({ username: value.username, id: value.id, position: value.position, hp: value.hp })
     });
     return playerArray;
   }
 
   start(players: Player[]) {
     // TODO: This is just copying and pasting the players one at a time
-    players.forEach(player => {
-        this.addPlayer(player)
-    });
+    players.forEach(player => { this.addPlayer(player) });
+
 
     // Needs at least 2 players and the game map ready to send
     const isGameReadyToStart = (this.players ? this.players.size > 1 : false) && this.map.isGameMapGenerated
@@ -49,6 +48,9 @@ export default class Game {
     let [_, lightPlayer] = Array.from(this.players)[getRandomInt(this.players.size)]
     this.lightPlayer = lightPlayer;
 
+
+
+    this.generateStartingPositions()
     const jsonMap = JSON.stringify(this.map)
 
     // TODO: Better handle when game map generation is slow
@@ -67,41 +69,92 @@ export default class Game {
     }
 
     this.players.forEach(player => {
-      player.socket.emit(Constants.MSG_TYPES_START_GAME + "_SUCCESS", {map: jsonMap, players: this.generatePlayerArray(), lightPlayerIds: `[${this.lightPlayer.id}, -1]` })
+      player.socket.emit(Constants.MSG_TYPES_START_GAME + "_SUCCESS", { map: jsonMap, players: this.generatePlayerArray(), lightPlayerIds: `[${this.lightPlayer.id}, -1]` })
     })
   }
 
   addPlayer(player: Player) {
 
-    // Generate a position to start this player at.
-    const x = this.map.width * (0.25 + Math.random() * 0.5);
-    const y = this.map.height * (0.25 + Math.random() * 0.5);
-    console.log("ADDING PLAYER!")
-    console.log(x,y)
 
-    const newPlayer = new Player(player.username, player.id, player.socket, new MapLocation(x, y), 90 * Math.PI/180, 90 * Math.PI/180)
+    console.log("ADDING PLAYER!")
+
+    const newPlayer = new Player(player.username, player.id, player.socket, null, 90 * Math.PI / 180, 30 * Math.PI / 180)
     this.players.set(player.socket.id, newPlayer)
 
     // TODO: Not received or used by client applications
-    player.socket.emit(Constants.MSG_TYPES_JOIN_GAME, {x, y, id: player.id})
+    player.socket.emit(Constants.MSG_TYPES_JOIN_GAME, { id: player.id })
+  }
+
+  generateStartingPositions() {
+
+
+    while (this.lightPlayer.position == null) {
+      const x = this.map.width * (0.25 + Math.random() * 0.5);
+      const y = this.map.height * (0.25 + Math.random() * 0.5);
+
+      if (!this.isInsideObstacle(x, y)) {
+        this.lightPlayer.position = new MapLocation(x, y)
+      }
+
+    }
+
+    const lightPointOrder = calculateRayPolygon(this.lightPlayer.position.x, this.lightPlayer.position.y, this.lightPlayer.visionDirection, this.lightPlayer.visionAngle, true, this.map.allPoints, this.map.allEdges);
+
+    // Generate a position to start this player at.
+    this.players.forEach(player => {
+      while (player.position == null) {
+        const x = this.map.width * (0.25 + Math.random() * 0.5);
+        const y = this.map.height * (0.25 + Math.random() * 0.5);
+        if (!this.isInsideObstacle(x, y) && !this.lightPointOrderContains(lightPointOrder, x, y)) {
+          player.position = new MapLocation(x, y)
+        }
+      }
+    })
+
+  }
+
+  isInsideObstacle(x: number, y: number) {
+    function inside(x, y, polygon: Obstacle) {
+
+
+
+      var inside = false;
+      for (var i = 0, j = polygon.points.length - 1; i < polygon.points.length; j = i++) {
+        var xi = polygon.points[i].x, yi = polygon.points[i].y;
+        var xj = polygon.points[j].x, yj = polygon.points[j].y;
+
+        var intersect = ((yi > y) != (yj > y))
+          && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+      }
+
+      return inside;
+    };
+
+    this.map.obstacles.forEach((obstacle: Obstacle) => {
+      if (inside(x, y, obstacle)) {
+        return true
+      }
+    })
+    return false
   }
 
   // Movements for players, and collision checking
-  handleMovement(currentX:number, currentY:number, nextPointX: number, nextPointY: number) : number[] {
+  handleMovement(currentX: number, currentY: number, nextPointX: number, nextPointY: number): number[] {
     const diffX: number = nextPointX - currentX;
     const diffY: number = nextPointY - currentY;
-    const distanceAttemptingToTravel: number = Math.sqrt(Math.pow(diffX,2) + Math.pow(diffY,2))
+    const distanceAttemptingToTravel: number = Math.sqrt(Math.pow(diffX, 2) + Math.pow(diffY, 2))
     const rayAngle: number = Math.atan2(diffY, diffX); // Used for priority queue when added later
     const raySlope = Math.tan(rayAngle);
-    const rayYIntercept: number = -(raySlope)*currentX + currentY
+    const rayYIntercept: number = -(raySlope) * currentX + currentY
 
     let collisionHappened = false;
     let currentCollisionDistance = distanceAttemptingToTravel; // TODO: Change to max numrical value?
     //console.log(`(x,y, nextPointX, nextPointY, travelDistance) => (${currentX},${currentY},${nextPointX},${nextPointY},${distanceAttemptingToTravel})`)
     //console.log(`(diffx,diffy,travelDistance) => (${diffX},${diffY},${distanceAttemptingToTravel})`)
-    
+
     let bestCollisionSoFarLineAngle: number = 0;
-  
+
     // Checks for movement line collision with all polygon lines
     for (let innerIndex = 0; innerIndex < this.map.numEdges; ++innerIndex) {
       const currentEdge: Line = this.map.allEdges[innerIndex];
@@ -113,36 +166,36 @@ export default class Game {
       // NOTE: Vertical `raySlope` is handled as a very large number, but not infinity
       if (currentEdge.slope == Infinity || currentEdge.slope == -Infinity) {
         collisionX = currentEdge.minX;
-        collisionY = raySlope*collisionX + rayYIntercept;
+        collisionY = raySlope * collisionX + rayYIntercept;
       } else {
         collisionX = (rayYIntercept - currentEdge.b) / (currentEdge.slope - raySlope);
-        collisionY = currentEdge.slope*collisionX + currentEdge.b;
+        collisionY = currentEdge.slope * collisionX + currentEdge.b;
       }
-      
-      // Need a good enough buffer for floating point errors           
-      if (collisionX <= currentEdge.maxX + 0.00001 && collisionX >= currentEdge.minX - 0.00001 && 
-          collisionY <= currentEdge.maxY + 0.00001 && collisionY >= currentEdge.minY - 0.00001) {
-            // Also check if angle to circle is the same
-            const distanceToLightOrigin = Math.sqrt(Math.pow(collisionX - currentX, 2) + Math.pow(collisionY - currentY, 2))
-            const angleToLight = Math.atan2(collisionY - currentY, collisionX - currentX) // Atan2 already returns a bounded angle from -pi to pi
 
-            // if (currentEdge.x1 == 650 && currentEdge.y1 == 80) {
-            // console.log(`(angle) => (${distanceToLightOrigin},${angleToLight},${rayAngle},${rayAngle-2*Math.PI})`)
-            // }
-            
-            if (distanceToLightOrigin < currentCollisionDistance && //Check it is closer
-              ((angleToLight < rayAngle + 0.01 && angleToLight > rayAngle - 0.01) || // Three angle checks are required because of checking between -180 and 180 degrees sometimes happens on left movements
-              (angleToLight+2*Math.PI < rayAngle + 0.01 && angleToLight+2*Math.PI > rayAngle - 0.01) ||
-              (angleToLight-2*Math.PI < rayAngle + 0.01 && angleToLight-2*Math.PI > rayAngle - 0.01))) { //Check it is in the direction of the ray (including if ray angles jump from 0 to 360 or visa versa)
-                bestCollisionSoFarLineAngle = edgeAngle
-                currentCollisionDistance = distanceToLightOrigin
-                collisionHappened = true
-            }
+      // Need a good enough buffer for floating point errors           
+      if (collisionX <= currentEdge.maxX + 0.00001 && collisionX >= currentEdge.minX - 0.00001 &&
+        collisionY <= currentEdge.maxY + 0.00001 && collisionY >= currentEdge.minY - 0.00001) {
+        // Also check if angle to circle is the same
+        const distanceToLightOrigin = Math.sqrt(Math.pow(collisionX - currentX, 2) + Math.pow(collisionY - currentY, 2))
+        const angleToLight = Math.atan2(collisionY - currentY, collisionX - currentX) // Atan2 already returns a bounded angle from -pi to pi
+
+        // if (currentEdge.x1 == 650 && currentEdge.y1 == 80) {
+        // console.log(`(angle) => (${distanceToLightOrigin},${angleToLight},${rayAngle},${rayAngle-2*Math.PI})`)
+        // }
+
+        if (distanceToLightOrigin < currentCollisionDistance && //Check it is closer
+          ((angleToLight < rayAngle + 0.01 && angleToLight > rayAngle - 0.01) || // Three angle checks are required because of checking between -180 and 180 degrees sometimes happens on left movements
+            (angleToLight + 2 * Math.PI < rayAngle + 0.01 && angleToLight + 2 * Math.PI > rayAngle - 0.01) ||
+            (angleToLight - 2 * Math.PI < rayAngle + 0.01 && angleToLight - 2 * Math.PI > rayAngle - 0.01))) { //Check it is in the direction of the ray (including if ray angles jump from 0 to 360 or visa versa)
+          bestCollisionSoFarLineAngle = edgeAngle
+          currentCollisionDistance = distanceToLightOrigin
+          collisionHappened = true
+        }
       }
-  
+
       // TODO: Circumstance for when collisions are equal to line edge
     }
-    
+
     if (collisionHappened) {
       // Smooth collisions, by only allowing movements in direction of the ray
       const rawDistance = distanceAttemptingToTravel * Math.cos(rayAngle - bestCollisionSoFarLineAngle)
@@ -170,7 +223,7 @@ export default class Game {
       currentY = 0;
     }
 
-    return [currentX,currentY];
+    return [currentX, currentY];
   }
 
   handleMovementInput(socket: Socket, encodedMessage: Uint16Array) {
@@ -185,36 +238,30 @@ export default class Game {
     let nextPointX = player.position.x;
     let nextPointY = player.position.y;
 
-    if (playerInput.keyUP)
-    {
+    if (playerInput.keyUP) {
       nextPointY -= 3
     }
-    if (playerInput.keyDOWN)
-    {
+    if (playerInput.keyDOWN) {
       nextPointY += 3
     }
-    if (playerInput.keyLEFT)
-    {
+    if (playerInput.keyLEFT) {
       nextPointX -= 3
     }
-    if (playerInput.keyRIGHT)
-    {
+    if (playerInput.keyRIGHT) {
       nextPointX += 3
     }
 
     // Control Flashlight angles
-    if (playerInput.keyExpandLight)
-    {
-      player.visionAngle += 1 * Math.PI/180
+    if (playerInput.keyExpandLight) {
+      player.visionAngle += 1 * Math.PI / 180
     }
-    if (playerInput.keyRestrictLight)
-    {
-      player.visionAngle -= 1 * Math.PI/180
+    if (playerInput.keyRestrictLight) {
+      player.visionAngle -= 1 * Math.PI / 180
     }
 
     // Constrain flashlight bounds to unit circle angles (so the person doesn't see more than a full circle or less than nothing in front of them)
-    if (player.visionAngle > 2*Math.PI - 0.000001) {
-      player.visionAngle = 2*Math.PI - 0.000001
+    if (player.visionAngle > 2 * Math.PI - 0.000001) {
+      player.visionAngle = 2 * Math.PI - 0.000001
     }
     if (player.visionAngle < 0) {
       player.visionAngle = 0
@@ -235,13 +282,13 @@ export default class Game {
     this.players.forEach((currentPlayer: Player, key: string) => {
       for (let leverIndex = 0; leverIndex < this.map.levers.length; ++leverIndex) {
         let currentLever = this.map.levers[leverIndex];
-  
+
         if (!currentLever.isTouched) {
           // Levers are on the side of an obstacle, but are generated from the selected point to the next point in the list
           const selectedObstacleForLever = this.map.obstacles.find(obstacle => obstacle.id == currentLever.polygonId)
           const firstPointForLever = selectedObstacleForLever.points[currentLever.side]
           const secondPointForLever = selectedObstacleForLever.points[(currentLever.side + 1) % selectedObstacleForLever.points.length]
-          const distanceToLever = this.calculateDistanceBetweenLineAndPoint(firstPointForLever.x, firstPointForLever.y,secondPointForLever.x, secondPointForLever.y, currentPlayer.position.x, currentPlayer.position.y)
+          const distanceToLever = this.calculateDistanceBetweenLineAndPoint(firstPointForLever.x, firstPointForLever.y, secondPointForLever.x, secondPointForLever.y, currentPlayer.position.x, currentPlayer.position.y)
           if (distanceToLever < 10) {
             currentLever.isTouched = true;
             this.players.forEach((player: Player, key: string) => {
@@ -264,9 +311,9 @@ export default class Game {
     let len_sq = C * C + D * D;
     let param = -1;
     if (len_sq != 0) //in case of 0 length line
-        param = dot / len_sq;
+      param = dot / len_sq;
 
-        let xx, yy;
+    let xx, yy;
 
     if (param < 0) {
       xx = x1;
@@ -310,12 +357,12 @@ export default class Game {
   }
 
   // NOTE: Modified from Phaser 3 source code polygon.contains()
-  lightPointOrderContains(lightPointOrder: number[], x: number, y:number) {
+  lightPointOrderContains(lightPointOrder: number[], x: number, y: number) {
     var inside = false;
 
     // Each entry corresponds to a value of the [x1, y1, x2, y2, ...] sequence
-    const numEntires = lightPointOrder.length; 
-    
+    const numEntires = lightPointOrder.length;
+
     // Make sure we have a valid set of (x,y) coordinates to represent our light polygon
     if (numEntires % 2 != 0) {
       throw new Error("Odd number of points");
@@ -328,18 +375,16 @@ export default class Game {
     // Caches the previous points position
     let jx = lightPointOrder[numEntires - 2]
     let jy = lightPointOrder[numEntires - 1]
-    for (var i = 0; i < numEntires; i += 2)
-    {
-        var ix = lightPointOrder[i];
-        var iy = lightPointOrder[i+1];
+    for (var i = 0; i < numEntires; i += 2) {
+      var ix = lightPointOrder[i];
+      var iy = lightPointOrder[i + 1];
 
-        if (((iy <= y && y < jy) || (jy <= y && y < iy)) && (x < (jx - ix) * (y - iy) / (jy - iy) + ix))
-        {
-            inside = !inside;
-        }
+      if (((iy <= y && y < jy) || (jy <= y && y < iy)) && (x < (jx - ix) * (y - iy) / (jy - iy) + ix)) {
+        inside = !inside;
+      }
 
-        jx = ix;
-        jy = iy;
+      jx = ix;
+      jy = iy;
     }
 
     return inside;
@@ -369,7 +414,7 @@ export default class Game {
         // TODO: This is the lightplayer
       }
     })
-    
+
   }
 
   isGameOverRecorded: boolean = false
@@ -393,8 +438,8 @@ export default class Game {
     this.players.forEach((player, id) => {
       // TODO: Dont kill anyone off yet
       // if (player.hp <= 0) {
-        // player.socket.emit(Constants.MSG_TYPES_GAME_OVER);
-        // this.players.delete(id);
+      // player.socket.emit(Constants.MSG_TYPES_GAME_OVER);
+      // this.players.delete(id);
       // }
     });
 
@@ -411,7 +456,7 @@ export default class Game {
 
     if (didDarkPlayersWin || didLightPlayersWin) {
       if (!this.isGameOverRecorded) {
-        const sqlCompatiblePlayers: {playerId: number, isLightPlayer: boolean, isWinner: boolean}[] = []
+        const sqlCompatiblePlayers: { playerId: number, isLightPlayer: boolean, isWinner: boolean }[] = []
         let array = Array.from(this.players);
         for (let playerIndex = 0; playerIndex < array.length; ++playerIndex) {
           const currentPlayer = array[playerIndex][1];
@@ -421,7 +466,7 @@ export default class Game {
           sqlCompatiblePlayers.push({
             playerId: currentPlayer.id, // TODO: Player ids are numbers, not uuids
             isLightPlayer: isLightPlayerTeam, // TODO: Player does not store what team they are on (the game takes care of this)
-            isWinner: (isLightPlayerTeam && didLightPlayersWin) || (!isLightPlayerTeam && didDarkPlayersWin) 
+            isWinner: (isLightPlayerTeam && didLightPlayersWin) || (!isLightPlayerTeam && didDarkPlayersWin)
           })
         }
 

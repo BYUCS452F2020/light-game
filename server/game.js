@@ -44,12 +44,11 @@ class Game {
         return playerArray;
     }
     start(players) {
-        players.forEach(player => {
-            this.addPlayer(player);
-        });
+        players.forEach(player => { this.addPlayer(player); });
         const isGameReadyToStart = (this.players ? this.players.size > 1 : false) && this.map.isGameMapGenerated;
         let [_, lightPlayer] = Array.from(this.players)[domain_1.getRandomInt(this.players.size)];
         this.lightPlayer = lightPlayer;
+        this.generateStartingPositions();
         const jsonMap = JSON.stringify(this.map);
         let waitingTimer = 0;
         while (!isGameReadyToStart) {
@@ -67,13 +66,50 @@ class Game {
         });
     }
     addPlayer(player) {
-        const x = this.map.width * (0.25 + Math.random() * 0.5);
-        const y = this.map.height * (0.25 + Math.random() * 0.5);
         console.log("ADDING PLAYER!");
-        console.log(x, y);
-        const newPlayer = new domain_1.Player(player.username, player.id, player.socket, new models_1.MapLocation(x, y), 90 * Math.PI / 180, 90 * Math.PI / 180);
+        const newPlayer = new domain_1.Player(player.username, player.id, player.socket, null, 90 * Math.PI / 180, 30 * Math.PI / 180);
         this.players.set(player.socket.id, newPlayer);
-        player.socket.emit(constants_1.Constants.MSG_TYPES_JOIN_GAME, { x, y, id: player.id });
+        player.socket.emit(constants_1.Constants.MSG_TYPES_JOIN_GAME, { id: player.id });
+    }
+    generateStartingPositions() {
+        while (this.lightPlayer.position == null) {
+            const x = this.map.width * (0.25 + Math.random() * 0.5);
+            const y = this.map.height * (0.25 + Math.random() * 0.5);
+            if (!this.isInsideObstacle(x, y)) {
+                this.lightPlayer.position = new models_1.MapLocation(x, y);
+            }
+        }
+        const lightPointOrder = vision_calculator_1.calculateRayPolygon(this.lightPlayer.position.x, this.lightPlayer.position.y, this.lightPlayer.visionDirection, this.lightPlayer.visionAngle, true, this.map.allPoints, this.map.allEdges);
+        this.players.forEach(player => {
+            while (player.position == null) {
+                const x = this.map.width * (0.25 + Math.random() * 0.5);
+                const y = this.map.height * (0.25 + Math.random() * 0.5);
+                if (!this.isInsideObstacle(x, y) && !this.lightPointOrderContains(lightPointOrder, x, y)) {
+                    player.position = new models_1.MapLocation(x, y);
+                }
+            }
+        });
+    }
+    isInsideObstacle(x, y) {
+        function inside(x, y, polygon) {
+            var inside = false;
+            for (var i = 0, j = polygon.points.length - 1; i < polygon.points.length; j = i++) {
+                var xi = polygon.points[i].x, yi = polygon.points[i].y;
+                var xj = polygon.points[j].x, yj = polygon.points[j].y;
+                var intersect = ((yi > y) != (yj > y))
+                    && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+                if (intersect)
+                    inside = !inside;
+            }
+            return inside;
+        }
+        ;
+        this.map.obstacles.forEach((obstacle) => {
+            if (inside(x, y, obstacle)) {
+                return true;
+            }
+        });
+        return false;
     }
     handleMovement(currentX, currentY, nextPointX, nextPointY) {
         const diffX = nextPointX - currentX;
