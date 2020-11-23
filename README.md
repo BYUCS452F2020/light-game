@@ -41,4 +41,4 @@ Currently, the technical stack will be:
 ###### Run on server
 `docker pull ashirsc/light-game`
 
-`docker run -p 80:3000 -e "SERVER_HOST=lightgame.drewhirschi.com" -e "RDS_PASSWORD=bruceconrad" -d ashirsc/light-game`
+`docker run -p 80:3000 -e "SERVER_HOST=lightgame.drewhirschi.com" -e "RDS_PASSWORD=bruceconrad" -e "MONGO_PASSWORD=bruceconrad" -d ashirsc/light-game`
