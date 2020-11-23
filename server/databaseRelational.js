@@ -95,7 +95,7 @@ class SQLDatabase {
                 return true;
             }
             catch (error) {
-                console.error(error);
+                console.error(`Error writing game results for ${gameId} for number of players: ${players.length}`, error);
                 return false;
             }
         });
@@ -107,7 +107,7 @@ class SQLDatabase {
                 return true;
             }
             catch (error) {
-                console.error(error);
+                console.error(`Error creating player with ${playerId} and ${username}`, error);
                 return false;
             }
         });
@@ -128,7 +128,7 @@ class SQLDatabase {
                 return results[0];
             }
             catch (error) {
-                console.error(error);
+                console.error(`Error getting player stats for ${playerId}`, error);
                 return null;
             }
         });
@@ -143,7 +143,7 @@ class SQLDatabase {
                 return results[0]['Username'];
             }
             catch (err) {
-                console.error(err);
+                console.error(`Error getting player username for ${playerId}`, err);
                 return null;
             }
         });
@@ -162,5 +162,3 @@ class SQLDatabase {
     }
 }
 exports.SQLDatabase = SQLDatabase;
-class PlayerStats {
-}

@@ -1,16 +1,9 @@
 import * as mysql from 'mysql'
-
-export interface Database {
-  table: string
-  readSchema: Function
-  writeGameResults: Function
-  createPlayer: Function
-  getPlayerStats: Function
-}
+import { PlayerStats } from './domain'
+import { Database } from './databaseManager'
 
 export class SQLDatabase implements Database {
 
-  table: string
   connection: mysql.Connection = mysql.createConnection({
     host: 'database-2.c2o6gcyfcz0b.us-west-2.rds.amazonaws.com',
     user: 'admin',
@@ -97,7 +90,7 @@ export class SQLDatabase implements Database {
       }
       return true;
     } catch (error) {
-      console.error(error)
+      console.error(`Error writing game results for ${gameId} for number of players: ${players.length}`, error)
       return false;
     }
   }
@@ -109,7 +102,7 @@ export class SQLDatabase implements Database {
       )
       return true;
     } catch(error) {
-      console.error(error)
+      console.error(`Error creating player with ${playerId} and ${username}`, error)
       return false;
     }
   }
@@ -130,7 +123,7 @@ export class SQLDatabase implements Database {
       )
       return results[0]
     } catch(error) {
-      console.error(error)
+      console.error(`Error getting player stats for ${playerId}`, error)
       return null
     }
   }
@@ -145,7 +138,7 @@ export class SQLDatabase implements Database {
       )
       return results[0]['Username']
     } catch(err) {
-      console.error(err)
+      console.error(`Error getting player username for ${playerId}`, err)
       return null
     }
   }
@@ -184,11 +177,3 @@ export class SQLDatabase implements Database {
 //   {playerId: 1234, isLightPlayer: true, isWinner: true}
 // ]
 // hi.writeGameResults("9999", players)
-
-class PlayerStats {
-  TotalLightWins: number
-  TotalLightPlays: number
-  TotalDarkWins: number
-  TotalDarkPlays: number
-  TotalGamesPlayed: number
-}

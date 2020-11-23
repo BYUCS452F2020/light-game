@@ -11,10 +11,10 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DatabaseManager = void 0;
 const constants_1 = require("../shared/constants");
-const db_1 = require("./db");
+const databaseMongo_1 = require("./databaseMongo");
 class DatabaseManager {
     constructor() {
-        this.database = new db_1.SQLDatabase();
+        this.database = new databaseMongo_1.MongoDatabase();
     }
     getPlayerUsername(playerId) {
         return __awaiter(this, void 0, void 0, function* () {

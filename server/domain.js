@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getRandomInt = exports.LightPlayer = exports.Player = exports.GameMap = void 0;
+exports.PlayerStats = exports.getRandomInt = exports.LightPlayer = exports.Player = exports.GameMap = void 0;
 const models_1 = require("../shared/models");
 class GameMap {
     constructor(nPlayers) {
@@ -134,3 +134,6 @@ class Color {
             b = getRandomInt(255);
     }
 }
+class PlayerStats {
+}
+exports.PlayerStats = PlayerStats;
