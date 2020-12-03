@@ -51,8 +51,10 @@ export class Server {
     var gameForThisSocket: Game = null;
 
     // Related to database manager and simple querying-inserting
-    socket.on(Constants.GET_PLAYER_STATS, (playerId: number) => {
-      this.databaseManager.getPlayerStats(socket, playerId)
+    // NOTE: sockets always interpret data as objects/strings. We transform this to number manually
+    socket.on(Constants.GET_PLAYER_STATS, (playerIdString: string) => {
+      const playerIdNumber: number = parseInt(playerIdString);
+      this.databaseManager.getPlayerStats(socket, playerIdNumber)
     });
 
     socket.on(Constants.CREATE_USERNAME, (username: string) => {
@@ -63,12 +65,14 @@ export class Server {
     socket.on(Constants.JOIN_ROOM, (data: object) => {
       console.log(`ATTEMPTING TO JOIN ROOM:`)
       const roomId = data['roomId']
-      const playerId = data['playerId']
+      const playerId = parseInt(data['playerId'])
       this.roomManager.joinRoom(roomId, socket, playerId);
     });
 
-    socket.on(Constants.CREATE_ROOM, (playerId: number) => {
-      this.roomManager.createRoom(socket, playerId);
+    // NOTE: sockets always interpret data as objects/strings. We transform this to number manually
+    socket.on(Constants.CREATE_ROOM, (playerIdString: string) => {
+      const playerIdNumber: number = parseInt(playerIdString);
+      this.roomManager.createRoom(socket, playerIdNumber);
     });
 
     socket.on(Constants.LEAVE_ROOM, (data: object) => {
@@ -96,9 +100,10 @@ export class Server {
       }
     });
 
-    socket.on('disconnect', () => {
+    socket.on('disconnect', (reason: string) => {
+      console.error(`Server disconnect with client for reason: ${reason}`)
       if (gameForThisSocket) {
-        gameForThisSocket.players.delete(socket.id);
+        gameForThisSocket.disconnectPlayer(socket.id);
       }
     });
   });

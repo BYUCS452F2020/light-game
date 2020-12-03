@@ -197,3 +197,11 @@ class Color {
     else b = getRandomInt(255)
   }
 }
+
+export class PlayerStats {
+  TotalLightWins: number
+  TotalLightPlays: number
+  TotalDarkWins: number
+  TotalDarkPlays: number
+  TotalGamesPlayed: number
+}

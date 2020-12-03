@@ -66,12 +66,14 @@ class RoomManager {
     }
     leaveRoom(socket, roomId, username) {
         const roomPlayers = this.rooms.get(roomId);
-        const remainingPlayers = roomPlayers.filter(player => player.username != username);
-        if (remainingPlayers.length == 0) {
-            this.deleteRoom(roomId);
-        }
-        else {
-            this.rooms.set(roomId, remainingPlayers);
+        if (roomPlayers && roomPlayers.length > 0) {
+            const remainingPlayers = roomPlayers.filter(player => player.username != username);
+            if (remainingPlayers.length == 0) {
+                this.deleteRoom(roomId);
+            }
+            else {
+                this.rooms.set(roomId, remainingPlayers);
+            }
         }
         socket.emit(constants_1.Constants.LEAVE_ROOM_SUCCESS);
     }

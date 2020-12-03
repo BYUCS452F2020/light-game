@@ -1,12 +1,19 @@
 import { Socket } from 'socket.io';
 import { Constants } from '../shared/constants';
-import { SQLDatabase } from './db';
+import { SQLDatabase } from './databaseRelational';
+import { MongoDatabase } from './databaseMongo';
+
+export interface Database {
+    writeGameResults: Function
+    createPlayer: Function
+    getPlayerStats: Function
+  }
 
 export class DatabaseManager {
-    database: SQLDatabase
+    database: MongoDatabase
 
     constructor() {
-        this.database = new SQLDatabase();
+        this.database = new MongoDatabase();
     }
 
     async getPlayerUsername(playerId: number) {

@@ -11,8 +11,10 @@
   "author": "Aaron Egbert",
   "license": "ISC",
   "dependencies": {
+    "@types/mongodb": "^3.5.34",
     "@types/socket.io-client": "^1.4.33",
     "express": "^4.17.1",
+    "mongodb": "^3.6.3",
     "mysql": "^2.18.1",
     "phaser": "^3.24.1",
     "socket.io": "^2.3.0",

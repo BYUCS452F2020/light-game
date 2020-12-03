@@ -21,8 +21,9 @@ class Server {
             io.on('connection', (socket) => {
                 console.log('Player connected!', socket.id);
                 var gameForThisSocket = null;
-                socket.on(constants_1.Constants.GET_PLAYER_STATS, (playerId) => {
-                    this.databaseManager.getPlayerStats(socket, playerId);
+                socket.on(constants_1.Constants.GET_PLAYER_STATS, (playerIdString) => {
+                    const playerIdNumber = parseInt(playerIdString);
+                    this.databaseManager.getPlayerStats(socket, playerIdNumber);
                 });
                 socket.on(constants_1.Constants.CREATE_USERNAME, (username) => {
                     this.databaseManager.createPlayer(socket, username);
@@ -30,11 +31,12 @@ class Server {
                 socket.on(constants_1.Constants.JOIN_ROOM, (data) => {
                     console.log(`ATTEMPTING TO JOIN ROOM:`);
                     const roomId = data['roomId'];
-                    const playerId = data['playerId'];
+                    const playerId = parseInt(data['playerId']);
                     this.roomManager.joinRoom(roomId, socket, playerId);
                 });
-                socket.on(constants_1.Constants.CREATE_ROOM, (playerId) => {
-                    this.roomManager.createRoom(socket, playerId);
+                socket.on(constants_1.Constants.CREATE_ROOM, (playerIdString) => {
+                    const playerIdNumber = parseInt(playerIdString);
+                    this.roomManager.createRoom(socket, playerIdNumber);
                 });
                 socket.on(constants_1.Constants.LEAVE_ROOM, (data) => {
                     const roomId = data['roomId'];
@@ -55,9 +57,10 @@ class Server {
                         gameForThisSocket = this.games.get(roomId);
                     }
                 });
-                socket.on('disconnect', () => {
+                socket.on('disconnect', (reason) => {
+                    console.error(`Server disconnect with client for reason: ${reason}`);
                     if (gameForThisSocket) {
-                        gameForThisSocket.players.delete(socket.id);
+                        gameForThisSocket.disconnectPlayer(socket.id);
                     }
                 });
             });
