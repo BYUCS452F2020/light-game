@@ -74,15 +74,20 @@ export default class Game {
   }
 
   addPlayer(player: Player) {
-
-
     console.log("ADDING PLAYER!")
-
     const newPlayer = new Player(player.username, player.id, player.socket, null, 90 * Math.PI / 180, 30 * Math.PI / 180)
     this.players.set(player.socket.id, newPlayer)
 
     // TODO: Not received or used by client applications
     player.socket.emit(Constants.MSG_TYPES_JOIN_GAME, { id: player.id })
+  }
+
+  disconnectPlayer(playerId: string) {
+    console.log(`removing player ${playerId}`)
+    if (this.players.has(playerId)) {
+      this.players.get(playerId).socket.emit("DISCONNETED_FROM_SERVER")
+    }
+    this.players.delete(playerId)
   }
 
   generateStartingPositions() {

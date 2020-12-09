@@ -71,6 +71,11 @@ class Game {
         this.players.set(player.socket.id, newPlayer);
         player.socket.emit(constants_1.Constants.MSG_TYPES_JOIN_GAME, { id: player.id });
     }
+    disconnectPlayer(playerId) {
+        console.log(`removing player ${playerId}`);
+        this.players.get(playerId).socket.emit(constants_1.Constants.MSG_TYPES_GAME_OVER);
+        this.players.delete(playerId);
+    }
     generateStartingPositions() {
         while (this.lightPlayer.position == null) {
             const x = this.map.width * (0.25 + Math.random() * 0.5);

@@ -7,13 +7,15 @@ export interface Database {
     writeGameResults: Function
     createPlayer: Function
     getPlayerStats: Function
+    getPlayerUsername: Function
   }
 
 export class DatabaseManager {
-    database: MongoDatabase
+    database: Database
 
     constructor() {
         this.database = new MongoDatabase();
+        // this.database = new SQLDatabase();
     }
 
     async getPlayerUsername(playerId: number) {

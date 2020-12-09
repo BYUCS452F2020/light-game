@@ -34,11 +34,11 @@ Currently, the technical stack will be:
 ## Docker commands
 
 ###### Run locally
-`docker build -t ashirsc/light-game .`
+`docker build -t ashirsc/light-game:latest .`
 
-`docker push ashirsc/light-game`
+`docker push ashirsc/light-game:latest`
 
 ###### Run on server
-`docker pull ashirsc/light-game`
+`docker pull ashirsc/light-game:latest`
 
-`docker run -p 80:3000 -e "SERVER_HOST=lightgame.drewhirschi.com" -e "RDS_PASSWORD=bruceconrad" -e "MONGO_PASSWORD=bruceconrad" -d ashirsc/light-game`
+`docker run -p 80:3000 -e "SERVER_HOST=lightgame.drewhirschi.com" -e "RDS_PASSWORD=bruceconrad" -e "MONGO_PASSWORD=bruceconrad" -d ashirsc/light-game:latest`
