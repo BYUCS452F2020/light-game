@@ -82,12 +82,26 @@ export default class Game {
     player.socket.emit(Constants.MSG_TYPES_JOIN_GAME, { id: player.id })
   }
 
-  disconnectPlayer(playerId: string) {
-    console.log(`removing player ${playerId}`)
-    if (this.players.has(playerId)) {
-      this.players.get(playerId).socket.emit("DISCONNETED_FROM_SERVER")
+  disconnectPlayer(socketId: string) {
+    const playerToDisconnect: Player = this.players.get(socketId);
+    if (playerToDisconnect) {
+      const playerUsername = playerToDisconnect.username;
+      console.log(`removing player with username ${playerUsername} and socketid ${socketId}`)
+      
+      // Cornercases that may be needed to cover later on
+      // TODO: If this person is in a room, remove them from the room
+      // TODO: If this person is in a game, stop the game
+      // TODO: Else, just remove them silently
+
+      // Notify every player in the game that someone left
+      this.players.forEach(player => {
+        player.socket.emit(Constants.PLAYER_DISCONNECT, playerUsername);
+      });
+
+      this.players.delete(socketId);
+    } else {
+      console.log(`Player with socketid ${socketId} already disconnected`)
     }
-    this.players.delete(playerId)
   }
 
   generateStartingPositions() {

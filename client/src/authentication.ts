@@ -106,6 +106,14 @@ export class AuthenticationScene extends Phaser.Scene {
                 }
             })
         }
+
+        // Define the behavior for when disconnected from the server
+        // TODO: Verify that this works when it happens
+        if (!this.socketClient.hasListeners('close')) {
+            this.socketClient.on('close', () => {
+              console.error("DISCONNECTED FROM SERVER. INTERNET STINKS")
+            })
+          }
     }
 
     createNewUsername(username) {

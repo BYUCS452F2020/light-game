@@ -71,10 +71,19 @@ class Game {
         this.players.set(player.socket.id, newPlayer);
         player.socket.emit(constants_1.Constants.MSG_TYPES_JOIN_GAME, { id: player.id });
     }
-    disconnectPlayer(playerId) {
-        console.log(`removing player ${playerId}`);
-        this.players.get(playerId).socket.emit(constants_1.Constants.MSG_TYPES_GAME_OVER);
-        this.players.delete(playerId);
+    disconnectPlayer(socketId) {
+        const playerToDisconnect = this.players.get(socketId);
+        if (playerToDisconnect) {
+            const playerUsername = playerToDisconnect.username;
+            console.log(`removing player with username ${playerUsername} and socketid ${socketId}`);
+            this.players.forEach(player => {
+                player.socket.emit(constants_1.Constants.PLAYER_DISCONNECT, playerUsername);
+            });
+            this.players.delete(socketId);
+        }
+        else {
+            console.log(`Player with socketid ${socketId} already disconnected`);
+        }
     }
     generateStartingPositions() {
         while (this.lightPlayer.position == null) {

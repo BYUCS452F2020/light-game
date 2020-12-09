@@ -48,6 +48,7 @@ export class GameState extends Phaser.Scene {
 
   didLightPlayersWin: boolean = false;
   didDarkPlayersWin: boolean = false;
+  didPlayerLeaveGame: boolean = false;
   generalOverlayText: Phaser.GameObjects.Text;
 
   isFlashlight = true; // Whether the vision of this player is of a flashlight form (not whether they are on the light team)
@@ -105,6 +106,12 @@ export class GameState extends Phaser.Scene {
           } else {
             this.didDarkPlayersWin = true;
           }
+        })
+      }
+      if (!this.socketClient.hasListeners(Constants.PLAYER_DISCONNECT)) {
+        this.socketClient.on(Constants.PLAYER_DISCONNECT, (playerUsername: string) => {
+          console.error(`A player with username ${playerUsername} was disconnected from the game!`)
+          this.didPlayerLeaveGame = true;
         })
       }
       // this.load.setBaseURL('http://labs.phaser.io')
@@ -195,7 +202,7 @@ export class GameState extends Phaser.Scene {
     this.lightGraphics.clear();
     this.maskGraphics.clear();
 
-    if (!this.didDarkPlayersWin && !this.didLightPlayersWin) {
+    if (!this.didDarkPlayersWin && !this.didLightPlayersWin && !this.didPlayerLeaveGame) {
   
       this.handlePlayerKeyboardInput()
 
@@ -323,8 +330,11 @@ export class GameState extends Phaser.Scene {
       }
       if (this.didDarkPlayersWin) {
         this.generalOverlayText.text = 'Dark Team WINS!'
-      } else {
+      } else if (this.didDarkPlayersWin) {
         this.generalOverlayText.text = 'Light Team WINS!'
+      } else {
+        // A player left the game
+        this.generalOverlayText.text = `Stalemate! Someone disconnected from the game!`
       }
     }
   }

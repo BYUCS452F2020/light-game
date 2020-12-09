@@ -15,4 +15,5 @@ export enum Constants {
   LEVER_IS_TOUCHED = 'lever_is_touched', // Send/Response for whether a lever is touched
   GET_PLAYER_STATS = 'get_player_stats', // Gets the player's stats, if the player exists
   CREATE_USERNAME = 'create_username', // Sets the player's username
+  PLAYER_DISCONNECT = 'player_disconnect'
 }

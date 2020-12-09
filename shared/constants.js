@@ -19,4 +19,5 @@ var Constants;
     Constants["LEVER_IS_TOUCHED"] = "lever_is_touched";
     Constants["GET_PLAYER_STATS"] = "get_player_stats";
     Constants["CREATE_USERNAME"] = "create_username";
+    Constants["PLAYER_DISCONNECT"] = "player_disconnect";
 })(Constants = exports.Constants || (exports.Constants = {}));
